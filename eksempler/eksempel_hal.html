@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lagerhal, Industrivej 12 – statisk beregning</title>
+<style>@page {
+  size: A4;
+  margin: 22mm 16mm 20mm 20mm;
+  @top-left { content: string(firma); font: 8pt "DejaVu Sans", sans-serif; color: #666; }
+  @top-right { content: string(sag); font: 8pt "DejaVu Sans", sans-serif; color: #666; }
+  @bottom-left { content: string(element); font: 8pt "DejaVu Sans", sans-serif; color: #666; }
+  @bottom-right { content: "Side " counter(page) " af " counter(pages); font: 8pt "DejaVu Sans", sans-serif; color: #666; }
+}
+:root { --accent: #1f4e79; --ok: #2e7d32; --fail: #c62828; --warn: #b26a00; --line: #d7dce2; --muted: #5f6b77; }
+html { font-family: "DejaVu Sans", "Segoe UI", Arial, sans-serif; font-size: 9pt; color: #1b1f24; background: #fff; }
+body { margin: 0; }
+.screen body, body.screen { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+.running-firma { string-set: firma content(); display: none; }
+.running-sag { string-set: sag content(); display: none; }
+h1 { font-size: 18pt; color: var(--accent); margin: 0 0 4pt; }
+h2 { font-size: 13pt; color: var(--accent); border-bottom: 1.5pt solid var(--accent); padding-bottom: 2pt; margin: 18pt 0 6pt; }
+h2.element { page-break-before: always; string-set: element content(); }
+h3 { font-size: 10.5pt; margin: 14pt 0 4pt; display: flex; justify-content: space-between; align-items: baseline;
+     border-bottom: 0.5pt solid var(--line); padding-bottom: 2pt; page-break-after: avoid; }
+h3 .clause { font-size: 8pt; font-weight: normal; color: var(--muted); }
+.header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2pt solid var(--accent); padding-bottom: 8pt; margin-bottom: 10pt; }
+.header .firm { text-align: right; color: var(--muted); font-size: 8pt; }
+.header img { max-height: 40pt; max-width: 160pt; }
+table { border-collapse: collapse; width: 100%; }
+table.meta td { padding: 2pt 6pt 2pt 0; vertical-align: top; }
+table.meta td:first-child { color: var(--muted); width: 32mm; }
+table.list th { text-align: left; font-weight: bold; border-bottom: 1pt solid #999; padding: 3pt 4pt; font-size: 8.5pt; }
+table.list td { border-bottom: 0.5pt solid var(--line); padding: 3pt 4pt; vertical-align: middle; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+.status { font-weight: bold; white-space: nowrap; }
+.status.ok { color: var(--ok); } .status.fail { color: var(--fail); } .status.na { color: var(--muted); font-weight: normal; } .status.unsup { color: var(--warn); }
+.bar-wrap { display: inline-block; width: 34mm; height: 6pt; background: #eef1f4; vertical-align: middle; margin-right: 4pt; position: relative; }
+.bar-fill { display: block; height: 6pt; background: var(--ok); }
+.bar-fill.fail { background: var(--fail); }
+.banner { padding: 5pt 8pt; border-left: 3pt solid var(--warn); background: #fff7e6; margin: 6pt 0; }
+.steps { width: 100%; }
+.step { display: flex; justify-content: space-between; align-items: center; gap: 8pt; padding: 2.5pt 0; page-break-inside: avoid; }
+.step .body { flex: 1; }
+.step .desc { color: var(--muted); font-size: 8pt; display: block; margin-bottom: 1pt; }
+.step .ref { color: var(--muted); font-size: 7.5pt; white-space: nowrap; text-align: right; min-width: 30mm; }
+.step.util { background: #f2f7f2; border-left: 3pt solid var(--ok); padding-left: 5pt; margin-top: 3pt; }
+.step.util.fail { background: #fdf0f0; border-left-color: var(--fail); }
+.step.note.warn { color: var(--warn); }
+.verdict { color: var(--ok); font-weight: bold; margin-left: 6pt; }
+.verdict.no { color: var(--muted); font-weight: normal; }
+table.given { width: auto; margin: 2pt 0 4pt; }
+table.given td { padding: 1.2pt 8pt 1.2pt 0; }
+table.given td.v { text-align: right; white-space: nowrap; }
+table.given td.d { color: var(--muted); font-size: 8pt; }
+table.given td.r { color: var(--muted); font-size: 7.5pt; padding-left: 10pt; }
+.result { margin: 6pt 0 2pt; font-weight: bold; }
+.sym i { font-family: "DejaVu Serif", "Cambria Math", "Times New Roman", serif; font-style: italic; }
+.sym sub { font-size: 70%; font-style: normal; font-family: "DejaVu Sans", sans-serif; }
+.bar { text-decoration: overline; }
+.frac { display: inline-block; vertical-align: middle; text-align: center; margin: 0 2pt; }
+.frac > .num, .frac > .den { display: block; padding: 0 2pt; }
+.frac > .num { border-bottom: 0.7pt solid currentColor; }
+.sqrt { white-space: nowrap; }
+.sqrt .radicand { border-top: 0.7pt solid currentColor; padding: 0 1pt; }
+.sqrt .rad { font-size: 110%; }
+sup { font-size: 70%; }
+.paren { font-weight: lighter; }
+.small { font-size: 8pt; color: var(--muted); }
+@media screen {
+  html { background: #f4f6f8; }
+  .page { background: #fff; max-width: 860px; margin: 24px auto; padding: 32px 40px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  h2.element { margin-top: 32pt; }
+}
+@media screen and (max-width: 600px) { .page { padding: 16px; } .step { flex-direction: column; align-items: flex-start; } .step .ref { text-align: left; } }
+ :root { --accent: #1f4e79; }</style>
+</head>
+<body>
+<div class="page">
+<span class="running-firma">Rådgivende Ingeniører A/S</span>
+<span class="running-sag">24-117 Lagerhal, Industrivej 12</span>
+
+
+
+
+<div class="header">
+  <div>
+    <h1>Statisk beregning</h1>
+    <div style="font-size: 11pt">Lagerhal, Industrivej 12</div>
+<div class="small">Eftervisning af primære stålelementer</div>  </div>
+  <div class="firm">
+    <b>Rådgivende Ingeniører A/S</b><br>Eksempelvej 1, 8000 Aarhus C
+  </div>
+</div>
+
+<table class="meta">
+  <tr><td>Sagsnr.</td><td>24-117</td><td>Dato</td><td>08.11.2026</td></tr>
+  <tr><td>Udført af</td><td>SIS</td><td>Revision</td><td>A</td></tr>
+  <tr><td>Kontrolleret af</td><td></td><td>Konsekvensklasse</td><td>CC2</td></tr>
+</table>
+
+<h2>Normgrundlag</h2>
+<p>DS/EN 1993-1-1 med DK NA · kontrolklasse: <b>normal</b></p>
+<div class="banner"><b>Bemærk:</b> UDKAST – skal verificeres mod gældende DK NA. Normparametrene er ikke gennemgået og godkendt.</div><table class="list">
+  <tr><th>Parameter</th><th class="num">Værdi</th><th>Beskrivelse</th><th>Kilde</th></tr>
+<tr><td><span class="sym"><i>γ</i><sub>3</sub></span></td><td class="num">1</td><td>Faktor for kontrolklasse</td><td class="small">DS/EN 1993-1-1 DK NA, 6.1(1) (kontrolklasse: normal)</td></tr><tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td class="num">1,1</td><td>Partialkoefficient, tværsnitsbæreevne</td><td class="small">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>γ</i><sub>M1</sub></span></td><td class="num">1,2</td><td>Partialkoefficient, stabilitet</td><td class="small">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>γ</i><sub>M2</sub></span></td><td class="num">1,35</td><td>Partialkoefficient, brud i træk</td><td class="small">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>E</i></span></td><td class="num">210 000 MPa</td><td>Elasticitetsmodul</td><td class="small">EN 1993-1-1, 3.2.6(1)</td></tr><tr><td><span class="sym"><i>G</i></span></td><td class="num">81000 MPa</td><td>Forskydningsmodul</td><td class="small">EN 1993-1-1, 3.2.6(1)</td></tr><tr><td><span class="sym"><i>η</i></span></td><td class="num">1,2</td><td>Faktor for forskydningsareal</td><td class="small">EN 1993-1-5, 5.1(2)</td></tr><tr><td>fy og fu tages fra produktstandarden</td><td class="num">produktstandard</td><td></td><td class="small">DS/EN 1993-1-1 DK NA, 3.2.1(1)</td></tr><tr><td>Metode for kipningsreduktionsfaktor</td><td class="num">valsede</td><td></td><td class="small">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i><span class="bar">λ</span></i><sub>LT,0</sub></span></td><td class="num">0,4</td><td>Plateaulængde for kipning (valsede profiler)</td><td class="small">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i>β</i><sub>LT</sub></span></td><td class="num">0,75</td><td>Korrektionsfaktor for kipning (valsede profiler)</td><td class="small">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td>Modifikationsfaktor f for momentfordeling anvendes</td><td class="num">ja</td><td></td><td class="small">EN 1993-1-1, 6.3.2.3(2)</td></tr></table>
+<p class="small">Regningsmæssige snitkræfter er bestemt i en særskilt beregning (DS/EN 1990 med DK NA). Fortegn: N<sub>Ed</sub> &gt; 0 er tryk.</p>
+
+<h2>Oversigt</h2>
+<table class="list">
+  <tr><th>Element</th><th>Profil</th><th>Stål</th><th>Styrende eftervisning</th><th>Udnyttelse</th><th>Status</th></tr>
+  <tr><td><b>B1 Tagbjælke akse B</b></td><td>IPE 360</td><td>S355</td><td>Kipning (6.3.2)</td>
+      <td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 63.917098056744784%"></span></span>63,9 %</td><td><span class="status ok">OK</span></td></tr>
+  <tr><td><b>B2 Kranbanebjælke</b></td><td>HEA 300</td><td>S355</td><td>Kipning (6.3.2)</td>
+      <td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 68.04510562738916%"></span></span>68 %</td><td><span class="status ok">OK</span></td></tr>
+  <tr><td><b>S1 Søjle akse B2</b></td><td>HEB 200</td><td>S355</td><td>Søjlefladning (bøjningsudknækning) (6.3.1)</td>
+      <td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 48.396288129872254%"></span></span>48,4 %</td><td><span class="status unsup">Mangler 6.3.3</span></td></tr>
+</table>
+
+<h2 class="element">B1 Tagbjælke akse B – IPE 360 S355</h2>
+<p>Simpelt understøttet tagbjælke. Kipafstivet af åse for hver 2,0 m i overflangen.</p><table class="list">
+  <tr><th>Eftervisning</th><th>Afsnit</th><th class="num">Udnyttelse</th><th>Status</th></tr>
+<tr><td>Tværsnitsklassifikation</td><td class="small">EN 1993-1-1, 5.5</td><td class="num">–</td><td><span class="status ok">OK</span></td></tr><tr><td>Bøjningsmoment, tværsnit</td><td class="small">EN 1993-1-1, 6.2.5</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 50.1662312330866%"></span></span>50,2 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Forskydning, tværsnit</td><td class="small">EN 1993-1-1, 6.2.6</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 12.524810659248283%"></span></span>12,5 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Moment, normalkraft og forskydning, tværsnit</td><td class="small">EN 1993-1-1, 6.2.8–6.2.10</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 50.1662312330866%"></span></span>50,2 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Kipning</td><td class="small">EN 1993-1-1, 6.3.2</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 63.917098056744784%"></span></span>63,9 %</td><td><span class="status ok">OK</span></td></tr></table>
+
+<h3><span>Grundlag</span></h3>
+<div class="steps">
+  <div class="step note info"><div class="body"><b>Profil:</b> IPE 360</div><div class="ref">EN 10365</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>h</i></span></td><td>=</td><td class="v">360 mm</td><td class="d">Højde</td><td class="r"></td></tr><tr><td><span class="sym"><i>b</i></span></td><td>=</td><td class="v">170 mm</td><td class="d">Flangebredde</td><td class="r"></td></tr><tr><td><span class="sym"><i>t</i><sub>w</sub></span></td><td>=</td><td class="v">8 mm</td><td class="d">Kroptykkelse</td><td class="r"></td></tr><tr><td><span class="sym"><i>t</i><sub>f</sub></span></td><td>=</td><td class="v">12,7 mm</td><td class="d">Flangetykkelse</td><td class="r"></td></tr><tr><td><span class="sym"><i>r</i></span></td><td>=</td><td class="v">18 mm</td><td class="d">Rundingsradius</td><td class="r"></td></tr><tr><td><span class="sym"><i>A</i></span></td><td>=</td><td class="v">72,73 cm<sup>2</sup></td><td class="d">Tværsnitsareal</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>y</sub></span></td><td>=</td><td class="v">16 266 cm<sup>4</sup></td><td class="d">Inertimoment, y-akse</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>el,y</sub></span></td><td>=</td><td class="v">903,6 cm<sup>3</sup></td><td class="d">Elastisk modstandsmoment, y</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>pl,y</sub></span></td><td>=</td><td class="v">1019 cm<sup>3</sup></td><td class="d">Plastisk modstandsmoment, y</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>z</sub></span></td><td>=</td><td class="v">1043 cm<sup>4</sup></td><td class="d">Inertimoment, z-akse</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>pl,z</sub></span></td><td>=</td><td class="v">191,1 cm<sup>3</sup></td><td class="d">Plastisk modstandsmoment, z</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>t</sub></span></td><td>=</td><td class="v">37,44 cm<sup>4</sup></td><td class="d">Vridningsinertimoment</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>w</sub></span></td><td>=</td><td class="v">314 645 cm<sup>6</sup></td><td class="d">Hvælvningsinertimoment</td><td class="r"></td></tr><tr><td><span class="sym"><i>g</i></span></td><td>=</td><td class="v">57,09 kg/m</td><td class="d">Egenvægt</td><td class="r"></td></tr>  </table>
+  <div class="step note info"><div class="body"><b>Materiale:</b> S355, bestemmende godstykkelse t = 12,7 mm</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>f</i><sub>y</sub></span></td><td>=</td><td class="v">355 MPa</td><td class="d">Flydespænding</td><td class="r">EN 10025-2:2019, tabel 7 og 8</td></tr><tr><td><span class="sym"><i>f</i><sub>u</sub></span></td><td>=</td><td class="v">470 MPa</td><td class="d">Brudspænding</td><td class="r">EN 10025-2:2019, tabel 7 og 8</td></tr><tr><td><span class="sym"><i>E</i></span></td><td>=</td><td class="v">210 000 MPa</td><td class="d">Elasticitetsmodul</td><td class="r">EN 1993-1-1, 3.2.6(1)</td></tr><tr><td><span class="sym"><i>G</i></span></td><td>=</td><td class="v">81 000 MPa</td><td class="d">Forskydningsmodul</td><td class="r">EN 1993-1-1, 3.2.6(1)</td></tr>  </table>
+  <div class="step note info"><div class="body"><b>Geometri og snitkræfter</b> (regningsmæssige, N<sub>Ed</sub> &gt; 0 er tryk)</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i></span></td><td>=</td><td class="v">8 m</td><td class="d">Elementlængde</td><td class="r"></td></tr><tr><td><span class="sym"><i>N</i><sub>Ed</sub></span></td><td>=</td><td class="v">0 kN</td><td class="d">Normalkraft</td><td class="r"></td></tr><tr><td><span class="sym"><i>V</i><sub>Ed</sub></span></td><td>=</td><td class="v">82 kN</td><td class="d">Forskydningskraft</td><td class="r"></td></tr><tr><td><span class="sym"><i>M</i><sub>Ed</sub></span></td><td>=</td><td class="v">165 kNm</td><td class="d">Moment om y-aksen</td><td class="r"></td></tr>  </table>
+</div>
+
+
+<h3><span>1. Tværsnitsklassifikation</span><span class="clause">EN 1993-1-1, 5.5</span></h3>
+<div class="steps">
+  <div class="step">
+    <div class="body"><span class="desc">Materialefaktor</span><span class="sym"><i>ε</i></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">235</span><span class="den"><span class="sym"><i>f</i><sub>y</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">235</span><span class="den">355 MPa</span></span><span class="paren">)</span> = <b>0,8136</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Flangens udragende del</span><span class="sym"><i>c</i><sub>f</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>b</i></span> − <span class="sym"><i>t</i><sub>w</sub></span> − 2 · <span class="sym"><i>r</i></span></span><span class="den">2</span></span> = <span class="frac"><span class="num">170 mm − 8 mm − 2 · 18 mm</span><span class="den">2</span></span> = <b>63 mm</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>f</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>f</sub></span></span></span> = 4,961 ≤ 7,323 = 9 · <span class="sym"><i>ε</i></span>
+<span class="verdict">→ Flange: klasse 1</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Kroppens fri højde</span><span class="sym"><i>c</i><sub>w</sub></span> = <span class="sym"><i>h</i></span> − 2 · <span class="sym"><i>t</i><sub>f</sub></span> − 2 · <span class="sym"><i>r</i></span> = 360 mm − 2 · 12,7 mm − 2 · 18 mm = <b>298,6 mm</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step note info"><div class="body">Krop påvirket af bøjning</div><div class="ref"></div></div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>w</sub></span></span></span> = 37,33 ≤ 58,58 = 72 · <span class="sym"><i>ε</i></span>
+<span class="verdict">→ Krop: klasse 1</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step note info"><div class="body"><b>Tværsnittet er i klasse 1</b> for den aktuelle påvirkning.</div><div class="ref"></div></div>
+</div>
+
+<div class="result">Klasse 1 – <span class="status ok">OK</span></div>
+<h3><span>2. Bøjningsmoment, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.5</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr>  </table>
+  <div class="step note info"><div class="body">Klasse 1: plastisk modstandsmoment anvendes.</div><div class="ref">6.2.5(2), (6.13)</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Modstandsmoment</span><span class="sym"><i>W</i><sub>y</sub></span> = <span class="sym"><i>W</i><sub>pl,y</sub></span> = <b>1019 cm<sup>3</sup></b>
+</div>
+    <div class="ref"></div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Momentbæreevne</span><span class="sym"><i>M</i><sub>c,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">1019 cm<sup>3</sup> · 355 MPa</span><span class="den">1,1</span></span> = <b>328,9 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.13)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>M</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>c,Rd</sub></span></span></span> = <span class="frac"><span class="num">165 kNm</span><span class="den">328,9 kNm</span></span> = <b>0,5017</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.12)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 50,2 % (<span class="sym"><i>M</i><sub>Ed</sub></span> / <span class="sym"><i>M</i><sub>c,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>3. Forskydning, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.6</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>η</i></span></td><td>=</td><td class="v">1,2</td><td class="d">Faktor for forskydningsareal</td><td class="r">EN 1993-1-5, 5.1(2)</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Forskydningsareal, valsede I-profiler</span><span class="sym"><i>A</i><sub>v</sub></span> = max<span class="paren">(</span><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span> + <span class="paren">(</span><span class="sym"><i>t</i><sub>w</sub></span> + 2 · <span class="sym"><i>r</i></span><span class="paren">)</span> · <span class="sym"><i>t</i><sub>f</sub></span>; <span class="sym"><i>η</i></span> · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span><span class="paren">)</span> = max<span class="paren">(</span>72,73 cm<sup>2</sup> − 2 · 170 mm · 12,7 mm + <span class="paren">(</span>8 mm + 2 · 18 mm<span class="paren">)</span> · 12,7 mm; 1,2 · 334,6 mm · 8 mm<span class="paren">)</span> = <b>35,14 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.6(3)a</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk forskydningsbæreevne</span><span class="sym"><i>V</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>A</i><sub>v</sub></span> · <span class="frac"><span class="num"><span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">35,14 cm<sup>2</sup> · <span class="frac"><span class="num">355 MPa</span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den">1,1</span></span> = <b>654,7 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.18)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Kontrol af forskydningsbuling</span><span class="frac"><span class="num"><span class="sym"><i>h</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>w</sub></span></span></span> = 41,83 ≤ 48,82 = <span class="frac"><span class="num">72 · <span class="sym"><i>ε</i></span></span><span class="den"><span class="sym"><i>η</i></span></span></span>
+<span class="verdict">→ forskydningsbuling skal ikke eftervises</span></div>
+    <div class="ref">EN 1993-1-1, 6.2.6(6)</div></div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>V</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>V</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>V</i><sub>pl,Rd</sub></span></span></span> = <span class="frac"><span class="num">82 kN</span><span class="den">654,7 kN</span></span> = <b>0,1252</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.17)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 12,5 % (<span class="sym"><i>V</i><sub>Ed</sub></span> / <span class="sym"><i>V</i><sub>pl,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>4. Moment, normalkraft og forskydning, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.8–6.2.10</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>η</i></span></td><td>=</td><td class="v">1,2</td><td class="d">Faktor for forskydningsareal</td><td class="r">EN 1993-1-5, 5.1(2)</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Forskydningsareal</span><span class="sym"><i>A</i><sub>v</sub></span> = max<span class="paren">(</span><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span> + <span class="paren">(</span><span class="sym"><i>t</i><sub>w</sub></span> + 2 · <span class="sym"><i>r</i></span><span class="paren">)</span> · <span class="sym"><i>t</i><sub>f</sub></span>; <span class="sym"><i>η</i></span> · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span><span class="paren">)</span> = max<span class="paren">(</span>72,73 cm<sup>2</sup> − 2 · 170 mm · 12,7 mm + <span class="paren">(</span>8 mm + 2 · 18 mm<span class="paren">)</span> · 12,7 mm; 1,2 · 334,6 mm · 8 mm<span class="paren">)</span> = <b>35,14 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.6(3)a</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk forskydningsbæreevne</span><span class="sym"><i>V</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>A</i><sub>v</sub></span> · <span class="frac"><span class="num"><span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">35,14 cm<sup>2</sup> · <span class="frac"><span class="num">355 MPa</span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den">1,1</span></span> = <b>654,7 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.18)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Forskydningens indflydelse</span><span class="sym"><i>V</i><sub>Ed</sub></span> = 82 kN ≤ 327,4 kN = 0,5 · <span class="sym"><i>V</i><sub>pl,Rd</sub></span>
+<span class="verdict">→ ingen reduktion for forskydning</span></div>
+    <div class="ref">EN 1993-1-1, 6.2.8(2)</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>ρ</i></span></td><td>=</td><td class="v">0</td><td class="d">Reduktionsfaktor for forskydning</td><td class="r"></td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Kropsareal</span><span class="sym"><i>A</i><sub>w</sub></span> = <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span> = 334,6 mm · 8 mm = <b>26,77 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.8(5)</div>
+  </div>
+  <div class="step note info"><div class="body">Klasse 1 eller 2: plastisk interaktion.</div><div class="ref"></div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk normalkraftbæreevne (reduceret flydespænding i kroppen ved forskydning)</span><span class="sym"><i>N</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="paren">(</span><span class="sym"><i>A</i></span> − <span class="sym"><i>ρ</i></span> · <span class="sym"><i>A</i><sub>w</sub></span><span class="paren">)</span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num"><span class="paren">(</span>72,73 cm<sup>2</sup> − 0 · 26,77 cm<sup>2</sup><span class="paren">)</span> · 355 MPa</span><span class="den">1,1</span></span> = <b>2347 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.6) og 6.2.10(3)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk momentbæreevne inkl. forskydning</span><span class="sym"><i>M</i><sub>pl,y,V,Rd</sub></span> = <span class="frac"><span class="num"><span class="paren">(</span><span class="sym"><i>W</i><sub>pl,y</sub></span> − <span class="frac"><span class="num"><span class="sym"><i>ρ</i></span> · <span class="sym"><i>A</i><sub>w</sub></span><sup>2</sup></span><span class="den">4 · <span class="sym"><i>t</i><sub>w</sub></span></span></span><span class="paren">)</span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num"><span class="paren">(</span>1019 cm<sup>3</sup> − <span class="frac"><span class="num">0 · <span class="paren">(</span>26,77 cm<sup>2</sup><span class="paren">)</span><sup>2</sup></span><span class="den">4 · 8 mm</span></span><span class="paren">)</span> · 355 MPa</span><span class="den">1,1</span></span> = <b>328,9 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.30)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Normalkraftforhold</span><span class="sym"><i>n</i></span> = <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>pl,Rd</sub></span></span></span> = <span class="frac"><span class="num">0 kN</span><span class="den">2347 kN</span></span> = <b>0</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.9.1(5)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Kropsandel</span><span class="sym"><i>a</i></span> = min<span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span></span><span class="den"><span class="sym"><i>A</i></span></span></span>; 0,5<span class="paren">)</span> = min<span class="paren">(</span><span class="frac"><span class="num">72,73 cm<sup>2</sup> − 2 · 170 mm · 12,7 mm</span><span class="den">72,73 cm<sup>2</sup></span></span>; 0,5<span class="paren">)</span> = <b>0,4063</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.9.1(5)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Normalkraftens indflydelse</span><span class="sym"><i>N</i><sub>Ed</sub></span> = 0 kN ≤ 586,8 kN = 0,25 · <span class="sym"><i>N</i><sub>pl,Rd</sub></span>
+</div>
+    <div class="ref">EN 1993-1-1, (6.33)</div></div>
+  <div class="step"><div class="body"><span class="sym"><i>N</i><sub>Ed</sub></span> = 0 kN ≤ 431,9 kN = <span class="frac"><span class="num">0,5 · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span>
+</div>
+    <div class="ref">EN 1993-1-1, (6.34)</div></div>
+  <div class="step note info"><div class="body">Begge betingelser er opfyldt: normalkraften reducerer ikke momentbæreevnen.</div><div class="ref">6.2.9.1(4)</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Reduceret momentbæreevne</span><span class="sym"><i>M</i><sub>N,y,Rd</sub></span> = <span class="sym"><i>M</i><sub>pl,y,V,Rd</sub></span> = <b>328,9 kNm</b>
+</div>
+    <div class="ref"></div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>N</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>pl,Rd</sub></span></span></span> = <span class="frac"><span class="num">0 kN</span><span class="den">2347 kN</span></span> = <b>0</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.9)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>MN</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>N,y,Rd</sub></span></span></span> = <span class="frac"><span class="num">165 kNm</span><span class="den">328,9 kNm</span></span> = <b>0,5017</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.31)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 50,2 % (<span class="sym"><i>M</i><sub>Ed</sub></span> / <span class="sym"><i>M</i><sub>N,y,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>5. Kipning</span><span class="clause">EN 1993-1-1, 6.3.2</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M1</sub></span></td><td>=</td><td class="v">1,2</td><td class="d">Partialkoefficient, stabilitet</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr>  </table>
+  <div class="step note info"><div class="body">Momentform: jævnt fordelt last.</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i><sub>LT</sub></span></td><td>=</td><td class="v">2 m</td><td class="d">Kiplængde (afstand mellem kipafstivninger)</td><td class="r"></td></tr><tr><td><span class="sym"><i>C</i><sub>1</sub></span></td><td>=</td><td class="v">1,127</td><td class="d">Momentfaktor</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>C</i><sub>2</sub></span></td><td>=</td><td class="v">0,454</td><td class="d">Faktor for lastplacering</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>z</i><sub>g</sub></span></td><td>=</td><td class="v">180 mm</td><td class="d">Lastangrebspunkt over forskydningscenter (overflange)</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>k</i></span></td><td>=</td><td class="v">1</td><td class="d">Effektiv-længdefaktor, sideudbøjning</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>k</i><sub>w</sub></span></td><td>=</td><td class="v">1</td><td class="d">Effektiv-længdefaktor, hvælving</td><td class="r">NCCI SN003</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Elastisk kritisk kipmoment</span><span class="sym"><i>M</i><sub>cr</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>C</i><sub>1</sub></span> · π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>z</sub></span></span><span class="den"><span class="paren">(</span><span class="sym"><i>k</i></span> · <span class="sym"><i>L</i><sub>LT</sub></span><span class="paren">)</span><sup>2</sup></span></span> · <span class="paren">(</span><span class="rad">√</span><span class="paren">(</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>k</i></span></span><span class="den"><span class="sym"><i>k</i><sub>w</sub></span></span></span><span class="paren">)</span><sup>2</sup> · <span class="frac"><span class="num"><span class="sym"><i>I</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>I</i><sub>z</sub></span></span></span> + <span class="frac"><span class="num"><span class="paren">(</span><span class="sym"><i>k</i></span> · <span class="sym"><i>L</i><sub>LT</sub></span><span class="paren">)</span><sup>2</sup> · <span class="sym"><i>G</i></span> · <span class="sym"><i>I</i><sub>t</sub></span></span><span class="den">π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>z</sub></span></span></span> + <span class="paren">(</span><span class="sym"><i>C</i><sub>2</sub></span> · <span class="sym"><i>z</i><sub>g</sub></span><span class="paren">)</span><sup>2</sup><span class="paren">)</span> − <span class="sym"><i>C</i><sub>2</sub></span> · <span class="sym"><i>z</i><sub>g</sub></span><span class="paren">)</span> = <span class="frac"><span class="num">1,127 · π<sup>2</sup> · 210 000 MPa · 1043 cm<sup>4</sup></span><span class="den"><span class="paren">(</span>1 · 2 m<span class="paren">)</span><sup>2</sup></span></span> · <span class="paren">(</span><span class="rad">√</span><span class="paren">(</span><span class="paren">(</span><span class="frac"><span class="num">1</span><span class="den">1</span></span><span class="paren">)</span><sup>2</sup> · <span class="frac"><span class="num">314 645 cm<sup>6</sup></span><span class="den">1043 cm<sup>4</sup></span></span> + <span class="frac"><span class="num"><span class="paren">(</span>1 · 2 m<span class="paren">)</span><sup>2</sup> · 81 000 MPa · 37,44 cm<sup>4</sup></span><span class="den">π<sup>2</sup> · 210 000 MPa · 1043 cm<sup>4</sup></span></span> + <span class="paren">(</span>0,454 · 180 mm<span class="paren">)</span><sup>2</sup><span class="paren">)</span> − 0,454 · 180 mm<span class="paren">)</span> = <b>757,4 kNm</b>
+</div>
+    <div class="ref">NCCI SN003</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Modstandsmoment (klasse 1)</span><span class="sym"><i>W</i><sub>y</sub></span> = <span class="sym"><i>W</i><sub>pl,y</sub></span> = <b>1019 cm<sup>3</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.2(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Relativt slankhedsforhold</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>cr</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">1019 cm<sup>3</sup> · 355 MPa</span><span class="den">757,4 kNm</span></span><span class="paren">)</span> = <b>0,6912</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.2(1)</div>
+  </div>
+  <div class="step note info"><div class="body">Metode for valsede profiler og tilsvarende svejste profiler.</div><div class="ref">EN 1993-1-1, 6.3.2.3</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i><span class="bar">λ</span></i><sub>LT,0</sub></span></td><td>=</td><td class="v">0,4</td><td class="d">Plateaulængde for kipning (valsede profiler)</td><td class="r">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i>β</i><sub>LT</sub></span></td><td>=</td><td class="v">0,75</td><td class="d">Korrektionsfaktor for kipning (valsede profiler)</td><td class="r">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i>α</i><sub>LT</sub></span></td><td>=</td><td class="v">0,49</td><td class="d">Imperfektionsfaktor, kipkurve c (h/b = 2,118)</td><td class="r">EN 1993-1-1, tabel 6.5 / tabel 6.3</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="sym"><i>Φ</i><sub>LT</sub></span> = 0,5 · <span class="paren">(</span>1 + <span class="sym"><i>α</i><sub>LT</sub></span> · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> − <span class="sym"><i><span class="bar">λ</span></i><sub>LT,0</sub></span><span class="paren">)</span> + <span class="sym"><i>β</i><sub>LT</sub></span> · <span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup><span class="paren">)</span> = 0,5 · <span class="paren">(</span>1 + 0,49 · <span class="paren">(</span>0,6912 − 0,4<span class="paren">)</span> + 0,75 · <span class="paren">(</span>0,6912<span class="paren">)</span><sup>2</sup><span class="paren">)</span> = <b>0,7505</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.3(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Reduktionsfaktor</span><span class="sym"><i>χ</i><sub>LT</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i>Φ</i><sub>LT</sub></span> + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="sym"><i>Φ</i><sub>LT</sub></span><sup>2</sup> − <span class="sym"><i>β</i><sub>LT</sub></span> · <span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den">0,7505 + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="paren">(</span>0,7505<span class="paren">)</span><sup>2</sup> − 0,75 · <span class="paren">(</span>0,6912<span class="paren">)</span><sup>2</sup></span></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="paren">(</span>0,6912<span class="paren">)</span><sup>2</sup></span></span><span class="paren">)</span> = <b>0,8311</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.57)</div>
+  </div>
+  <table class="given">
+<tr><td><span class="sym"><i>k</i><sub>c</sub></span></td><td>=</td><td class="v">0,94</td><td class="d">Korrektionsfaktor for momentform</td><td class="r">EN 1993-1-1, tabel 6.6</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Modifikationsfaktor</span><span class="sym"><i>f</i></span> = min<span class="paren">(</span>1; 1 − 0,5 · <span class="paren">(</span>1 − <span class="sym"><i>k</i><sub>c</sub></span><span class="paren">)</span> · <span class="paren">(</span>1 − 2 · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> − 0,8<span class="paren">)</span><sup>2</sup><span class="paren">)</span><span class="paren">)</span> = min<span class="paren">(</span>1; 1 − 0,5 · <span class="paren">(</span>1 − 0,94<span class="paren">)</span> · <span class="paren">(</span>1 − 2 · <span class="paren">(</span>0,6912 − 0,8<span class="paren">)</span><sup>2</sup><span class="paren">)</span><span class="paren">)</span> = <b>0,9707</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.58)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Modificeret reduktionsfaktor</span><span class="sym"><i>χ</i><sub>LT,mod</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>LT</sub></span></span><span class="den"><span class="sym"><i>f</i></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">0,8311</span><span class="den">0,9707</span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="paren">(</span>0,6912<span class="paren">)</span><sup>2</sup></span></span><span class="paren">)</span> = <b>0,8562</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.58)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Kipningsbæreevne</span><span class="sym"><i>M</i><sub>b,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>LT,mod</sub></span> · <span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M1</sub></span></span></span> = <span class="frac"><span class="num">0,8562 · 1019 cm<sup>3</sup> · 355 MPa</span><span class="den">1,2</span></span> = <b>258,1 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.55)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>LT</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>b,Rd</sub></span></span></span> = <span class="frac"><span class="num">165 kNm</span><span class="den">258,1 kNm</span></span> = <b>0,6392</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.54)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 63,9 % (<span class="sym"><i>M</i><sub>Ed</sub></span> / <span class="sym"><i>M</i><sub>b,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h2 class="element">B2 Kranbanebjælke – HEA 300 S355</h2>
+<p>Simpelt understøttet, uden mellemliggende kipafstivning.</p><table class="list">
+  <tr><th>Eftervisning</th><th>Afsnit</th><th class="num">Udnyttelse</th><th>Status</th></tr>
+<tr><td>Tværsnitsklassifikation</td><td class="small">EN 1993-1-1, 5.5</td><td class="num">–</td><td><span class="status ok">OK</span></td></tr><tr><td>Bøjningsmoment, tværsnit</td><td class="small">EN 1993-1-1, 6.2.5</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 51.66166745948922%"></span></span>51,7 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Forskydning, tværsnit</td><td class="small">EN 1993-1-1, 6.2.6</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 22.315494003051626%"></span></span>22,3 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Moment, normalkraft og forskydning, tværsnit</td><td class="small">EN 1993-1-1, 6.2.8–6.2.10</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 51.66166745948922%"></span></span>51,7 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Søjlefladning (bøjningsudknækning)</td><td class="small">EN 1993-1-1, 6.3.1</td><td class="num">–</td><td><span class="status na">Ikke relevant</span></td></tr><tr><td>Kipning</td><td class="small">EN 1993-1-1, 6.3.2</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 68.04510562738916%"></span></span>68 %</td><td><span class="status ok">OK</span></td></tr></table>
+
+<h3><span>Grundlag</span></h3>
+<div class="steps">
+  <div class="step note info"><div class="body"><b>Profil:</b> HEA 300</div><div class="ref">EN 10365</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>h</i></span></td><td>=</td><td class="v">290 mm</td><td class="d">Højde</td><td class="r"></td></tr><tr><td><span class="sym"><i>b</i></span></td><td>=</td><td class="v">300 mm</td><td class="d">Flangebredde</td><td class="r"></td></tr><tr><td><span class="sym"><i>t</i><sub>w</sub></span></td><td>=</td><td class="v">8,5 mm</td><td class="d">Kroptykkelse</td><td class="r"></td></tr><tr><td><span class="sym"><i>t</i><sub>f</sub></span></td><td>=</td><td class="v">14 mm</td><td class="d">Flangetykkelse</td><td class="r"></td></tr><tr><td><span class="sym"><i>r</i></span></td><td>=</td><td class="v">27 mm</td><td class="d">Rundingsradius</td><td class="r"></td></tr><tr><td><span class="sym"><i>A</i></span></td><td>=</td><td class="v">112,5 cm<sup>2</sup></td><td class="d">Tværsnitsareal</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>y</sub></span></td><td>=</td><td class="v">18 263 cm<sup>4</sup></td><td class="d">Inertimoment, y-akse</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>el,y</sub></span></td><td>=</td><td class="v">1260 cm<sup>3</sup></td><td class="d">Elastisk modstandsmoment, y</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>pl,y</sub></span></td><td>=</td><td class="v">1383 cm<sup>3</sup></td><td class="d">Plastisk modstandsmoment, y</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>z</sub></span></td><td>=</td><td class="v">6310 cm<sup>4</sup></td><td class="d">Inertimoment, z-akse</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>pl,z</sub></span></td><td>=</td><td class="v">641,2 cm<sup>3</sup></td><td class="d">Plastisk modstandsmoment, z</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>t</sub></span></td><td>=</td><td class="v">87,76 cm<sup>4</sup></td><td class="d">Vridningsinertimoment</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>w</sub></span></td><td>=</td><td class="v">1,202·10<sup>6</sup> cm<sup>6</sup></td><td class="d">Hvælvningsinertimoment</td><td class="r"></td></tr><tr><td><span class="sym"><i>g</i></span></td><td>=</td><td class="v">88,33 kg/m</td><td class="d">Egenvægt</td><td class="r"></td></tr>  </table>
+  <div class="step note info"><div class="body"><b>Materiale:</b> S355, bestemmende godstykkelse t = 14 mm</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>f</i><sub>y</sub></span></td><td>=</td><td class="v">355 MPa</td><td class="d">Flydespænding</td><td class="r">EN 10025-2:2019, tabel 7 og 8</td></tr><tr><td><span class="sym"><i>f</i><sub>u</sub></span></td><td>=</td><td class="v">470 MPa</td><td class="d">Brudspænding</td><td class="r">EN 10025-2:2019, tabel 7 og 8</td></tr><tr><td><span class="sym"><i>E</i></span></td><td>=</td><td class="v">210 000 MPa</td><td class="d">Elasticitetsmodul</td><td class="r">EN 1993-1-1, 3.2.6(1)</td></tr><tr><td><span class="sym"><i>G</i></span></td><td>=</td><td class="v">81 000 MPa</td><td class="d">Forskydningsmodul</td><td class="r">EN 1993-1-1, 3.2.6(1)</td></tr>  </table>
+  <div class="step note info"><div class="body"><b>Geometri og snitkræfter</b> (regningsmæssige, N<sub>Ed</sub> &gt; 0 er tryk)</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i></span></td><td>=</td><td class="v">6 m</td><td class="d">Elementlængde</td><td class="r"></td></tr><tr><td><span class="sym"><i>N</i><sub>Ed</sub></span></td><td>=</td><td class="v">0 kN</td><td class="d">Normalkraft</td><td class="r"></td></tr><tr><td><span class="sym"><i>V</i><sub>Ed</sub></span></td><td>=</td><td class="v">155 kN</td><td class="d">Forskydningskraft</td><td class="r"></td></tr><tr><td><span class="sym"><i>M</i><sub>Ed</sub></span></td><td>=</td><td class="v">210 kNm</td><td class="d">Moment om y-aksen</td><td class="r"></td></tr>  </table>
+</div>
+
+
+<h3><span>1. Tværsnitsklassifikation</span><span class="clause">EN 1993-1-1, 5.5</span></h3>
+<div class="steps">
+  <div class="step">
+    <div class="body"><span class="desc">Materialefaktor</span><span class="sym"><i>ε</i></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">235</span><span class="den"><span class="sym"><i>f</i><sub>y</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">235</span><span class="den">355 MPa</span></span><span class="paren">)</span> = <b>0,8136</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Flangens udragende del</span><span class="sym"><i>c</i><sub>f</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>b</i></span> − <span class="sym"><i>t</i><sub>w</sub></span> − 2 · <span class="sym"><i>r</i></span></span><span class="den">2</span></span> = <span class="frac"><span class="num">300 mm − 8,5 mm − 2 · 27 mm</span><span class="den">2</span></span> = <b>118,8 mm</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>f</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>f</sub></span></span></span> = 8,482 &gt; 7,323 = 9 · <span class="sym"><i>ε</i></span>
+<span class="verdict no">→ ikke klasse 1</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>f</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>f</sub></span></span></span> = 8,482 &gt; 8,136 = 10 · <span class="sym"><i>ε</i></span>
+<span class="verdict no">→ ikke klasse 2</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>f</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>f</sub></span></span></span> = 8,482 ≤ 11,39 = 14 · <span class="sym"><i>ε</i></span>
+<span class="verdict">→ Flange: klasse 3</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Kroppens fri højde</span><span class="sym"><i>c</i><sub>w</sub></span> = <span class="sym"><i>h</i></span> − 2 · <span class="sym"><i>t</i><sub>f</sub></span> − 2 · <span class="sym"><i>r</i></span> = 290 mm − 2 · 14 mm − 2 · 27 mm = <b>208 mm</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step note info"><div class="body">Krop påvirket af bøjning</div><div class="ref"></div></div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>w</sub></span></span></span> = 24,47 ≤ 58,58 = 72 · <span class="sym"><i>ε</i></span>
+<span class="verdict">→ Krop: klasse 1</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step note info"><div class="body"><b>Tværsnittet er i klasse 3</b> for den aktuelle påvirkning.</div><div class="ref"></div></div>
+</div>
+
+<div class="result">Klasse 3 – <span class="status ok">OK</span></div>
+<h3><span>2. Bøjningsmoment, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.5</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr>  </table>
+  <div class="step note info"><div class="body">Klasse 3: elastisk modstandsmoment anvendes.</div><div class="ref">6.2.5(2), (6.14)</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Modstandsmoment</span><span class="sym"><i>W</i><sub>y</sub></span> = <span class="sym"><i>W</i><sub>el,y</sub></span> = <b>1260 cm<sup>3</sup></b>
+</div>
+    <div class="ref"></div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Momentbæreevne</span><span class="sym"><i>M</i><sub>c,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">1260 cm<sup>3</sup> · 355 MPa</span><span class="den">1,1</span></span> = <b>406,5 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.14)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>M</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>c,Rd</sub></span></span></span> = <span class="frac"><span class="num">210 kNm</span><span class="den">406,5 kNm</span></span> = <b>0,5166</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.12)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 51,7 % (<span class="sym"><i>M</i><sub>Ed</sub></span> / <span class="sym"><i>M</i><sub>c,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>3. Forskydning, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.6</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>η</i></span></td><td>=</td><td class="v">1,2</td><td class="d">Faktor for forskydningsareal</td><td class="r">EN 1993-1-5, 5.1(2)</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Forskydningsareal, valsede I-profiler</span><span class="sym"><i>A</i><sub>v</sub></span> = max<span class="paren">(</span><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span> + <span class="paren">(</span><span class="sym"><i>t</i><sub>w</sub></span> + 2 · <span class="sym"><i>r</i></span><span class="paren">)</span> · <span class="sym"><i>t</i><sub>f</sub></span>; <span class="sym"><i>η</i></span> · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span><span class="paren">)</span> = max<span class="paren">(</span>112,5 cm<sup>2</sup> − 2 · 300 mm · 14 mm + <span class="paren">(</span>8,5 mm + 2 · 27 mm<span class="paren">)</span> · 14 mm; 1,2 · 262 mm · 8,5 mm<span class="paren">)</span> = <b>37,28 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.6(3)a</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk forskydningsbæreevne</span><span class="sym"><i>V</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>A</i><sub>v</sub></span> · <span class="frac"><span class="num"><span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">37,28 cm<sup>2</sup> · <span class="frac"><span class="num">355 MPa</span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den">1,1</span></span> = <b>694,6 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.18)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Kontrol af forskydningsbuling</span><span class="frac"><span class="num"><span class="sym"><i>h</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>w</sub></span></span></span> = 30,82 ≤ 48,82 = <span class="frac"><span class="num">72 · <span class="sym"><i>ε</i></span></span><span class="den"><span class="sym"><i>η</i></span></span></span>
+<span class="verdict">→ forskydningsbuling skal ikke eftervises</span></div>
+    <div class="ref">EN 1993-1-1, 6.2.6(6)</div></div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>V</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>V</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>V</i><sub>pl,Rd</sub></span></span></span> = <span class="frac"><span class="num">155 kN</span><span class="den">694,6 kN</span></span> = <b>0,2232</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.17)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 22,3 % (<span class="sym"><i>V</i><sub>Ed</sub></span> / <span class="sym"><i>V</i><sub>pl,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>4. Moment, normalkraft og forskydning, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.8–6.2.10</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>η</i></span></td><td>=</td><td class="v">1,2</td><td class="d">Faktor for forskydningsareal</td><td class="r">EN 1993-1-5, 5.1(2)</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Forskydningsareal</span><span class="sym"><i>A</i><sub>v</sub></span> = max<span class="paren">(</span><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span> + <span class="paren">(</span><span class="sym"><i>t</i><sub>w</sub></span> + 2 · <span class="sym"><i>r</i></span><span class="paren">)</span> · <span class="sym"><i>t</i><sub>f</sub></span>; <span class="sym"><i>η</i></span> · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span><span class="paren">)</span> = max<span class="paren">(</span>112,5 cm<sup>2</sup> − 2 · 300 mm · 14 mm + <span class="paren">(</span>8,5 mm + 2 · 27 mm<span class="paren">)</span> · 14 mm; 1,2 · 262 mm · 8,5 mm<span class="paren">)</span> = <b>37,28 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.6(3)a</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk forskydningsbæreevne</span><span class="sym"><i>V</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>A</i><sub>v</sub></span> · <span class="frac"><span class="num"><span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">37,28 cm<sup>2</sup> · <span class="frac"><span class="num">355 MPa</span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den">1,1</span></span> = <b>694,6 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.18)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Forskydningens indflydelse</span><span class="sym"><i>V</i><sub>Ed</sub></span> = 155 kN ≤ 347,3 kN = 0,5 · <span class="sym"><i>V</i><sub>pl,Rd</sub></span>
+<span class="verdict">→ ingen reduktion for forskydning</span></div>
+    <div class="ref">EN 1993-1-1, 6.2.8(2)</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>ρ</i></span></td><td>=</td><td class="v">0</td><td class="d">Reduktionsfaktor for forskydning</td><td class="r"></td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Kropsareal</span><span class="sym"><i>A</i><sub>w</sub></span> = <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span> = 262 mm · 8,5 mm = <b>22,27 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.8(5)</div>
+  </div>
+  <div class="step note info"><div class="body">Klasse 3: elastisk spændingskontrol.</div><div class="ref"></div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Største normalspænding</span><span class="sym"><i>σ</i><sub>x,Ed</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>A</i></span></span></span> + <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>W</i><sub>el,y</sub></span></span></span> = <span class="frac"><span class="num">0 kN</span><span class="den">112,5 cm<sup>2</sup></span></span> + <span class="frac"><span class="num">210 kNm</span><span class="den">1260 cm<sup>3</sup></span></span> = <b>166,7 MPa</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.9.2(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Regningsmæssig flydespænding</span><span class="sym"><i>f</i><sub>y,d</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">355 MPa</span><span class="den">1,1</span></span> = <b>322,7 MPa</b>
+</div>
+    <div class="ref"></div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>σ</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>σ</i><sub>x,Ed</sub></span></span><span class="den"><span class="sym"><i>f</i><sub>y,d</sub></span></span></span> = <span class="frac"><span class="num">166,7 MPa</span><span class="den">322,7 MPa</span></span> = <b>0,5166</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.42)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 51,7 % (<span class="sym"><i>σ</i><sub>x,Ed</sub></span> / <span class="sym"><i>f</i><sub>y,d</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>5. Søjlefladning (bøjningsudknækning)</span><span class="clause">EN 1993-1-1, 6.3.1</span></h3>
+<div class="steps">
+  <div class="step note info"><div class="body">Elementet er ikke trykpåvirket; søjlefladning er ikke relevant.</div><div class="ref"></div></div>
+</div>
+
+<div class="result"><span class="status na">Ikke relevant</span></div>
+<h3><span>6. Kipning</span><span class="clause">EN 1993-1-1, 6.3.2</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M1</sub></span></td><td>=</td><td class="v">1,2</td><td class="d">Partialkoefficient, stabilitet</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr>  </table>
+  <div class="step note info"><div class="body">Momentform: punktlast midt på spændet.</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i><sub>LT</sub></span></td><td>=</td><td class="v">6 m</td><td class="d">Kiplængde (afstand mellem kipafstivninger)</td><td class="r"></td></tr><tr><td><span class="sym"><i>C</i><sub>1</sub></span></td><td>=</td><td class="v">1,348</td><td class="d">Momentfaktor</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>C</i><sub>2</sub></span></td><td>=</td><td class="v">0,63</td><td class="d">Faktor for lastplacering</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>z</i><sub>g</sub></span></td><td>=</td><td class="v">145 mm</td><td class="d">Lastangrebspunkt over forskydningscenter (overflange)</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>k</i></span></td><td>=</td><td class="v">1</td><td class="d">Effektiv-længdefaktor, sideudbøjning</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>k</i><sub>w</sub></span></td><td>=</td><td class="v">1</td><td class="d">Effektiv-længdefaktor, hvælving</td><td class="r">NCCI SN003</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Elastisk kritisk kipmoment</span><span class="sym"><i>M</i><sub>cr</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>C</i><sub>1</sub></span> · π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>z</sub></span></span><span class="den"><span class="paren">(</span><span class="sym"><i>k</i></span> · <span class="sym"><i>L</i><sub>LT</sub></span><span class="paren">)</span><sup>2</sup></span></span> · <span class="paren">(</span><span class="rad">√</span><span class="paren">(</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>k</i></span></span><span class="den"><span class="sym"><i>k</i><sub>w</sub></span></span></span><span class="paren">)</span><sup>2</sup> · <span class="frac"><span class="num"><span class="sym"><i>I</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>I</i><sub>z</sub></span></span></span> + <span class="frac"><span class="num"><span class="paren">(</span><span class="sym"><i>k</i></span> · <span class="sym"><i>L</i><sub>LT</sub></span><span class="paren">)</span><sup>2</sup> · <span class="sym"><i>G</i></span> · <span class="sym"><i>I</i><sub>t</sub></span></span><span class="den">π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>z</sub></span></span></span> + <span class="paren">(</span><span class="sym"><i>C</i><sub>2</sub></span> · <span class="sym"><i>z</i><sub>g</sub></span><span class="paren">)</span><sup>2</sup><span class="paren">)</span> − <span class="sym"><i>C</i><sub>2</sub></span> · <span class="sym"><i>z</i><sub>g</sub></span><span class="paren">)</span> = <span class="frac"><span class="num">1,348 · π<sup>2</sup> · 210 000 MPa · 6310 cm<sup>4</sup></span><span class="den"><span class="paren">(</span>1 · 6 m<span class="paren">)</span><sup>2</sup></span></span> · <span class="paren">(</span><span class="rad">√</span><span class="paren">(</span><span class="paren">(</span><span class="frac"><span class="num">1</span><span class="den">1</span></span><span class="paren">)</span><sup>2</sup> · <span class="frac"><span class="num">1,202·10<sup>6</sup> cm<sup>6</sup></span><span class="den">6310 cm<sup>4</sup></span></span> + <span class="frac"><span class="num"><span class="paren">(</span>1 · 6 m<span class="paren">)</span><sup>2</sup> · 81 000 MPa · 87,76 cm<sup>4</sup></span><span class="den">π<sup>2</sup> · 210 000 MPa · 6310 cm<sup>4</sup></span></span> + <span class="paren">(</span>0,63 · 145 mm<span class="paren">)</span><sup>2</sup><span class="paren">)</span> − 0,63 · 145 mm<span class="paren">)</span> = <b>613,8 kNm</b>
+</div>
+    <div class="ref">NCCI SN003</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Modstandsmoment (klasse 3)</span><span class="sym"><i>W</i><sub>y</sub></span> = <span class="sym"><i>W</i><sub>el,y</sub></span> = <b>1260 cm<sup>3</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.2(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Relativt slankhedsforhold</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>cr</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">1260 cm<sup>3</sup> · 355 MPa</span><span class="den">613,8 kNm</span></span><span class="paren">)</span> = <b>0,8535</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.2(1)</div>
+  </div>
+  <div class="step note info"><div class="body">Metode for valsede profiler og tilsvarende svejste profiler.</div><div class="ref">EN 1993-1-1, 6.3.2.3</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i><span class="bar">λ</span></i><sub>LT,0</sub></span></td><td>=</td><td class="v">0,4</td><td class="d">Plateaulængde for kipning (valsede profiler)</td><td class="r">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i>β</i><sub>LT</sub></span></td><td>=</td><td class="v">0,75</td><td class="d">Korrektionsfaktor for kipning (valsede profiler)</td><td class="r">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i>α</i><sub>LT</sub></span></td><td>=</td><td class="v">0,34</td><td class="d">Imperfektionsfaktor, kipkurve b (h/b = 0,9667)</td><td class="r">EN 1993-1-1, tabel 6.5 / tabel 6.3</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="sym"><i>Φ</i><sub>LT</sub></span> = 0,5 · <span class="paren">(</span>1 + <span class="sym"><i>α</i><sub>LT</sub></span> · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> − <span class="sym"><i><span class="bar">λ</span></i><sub>LT,0</sub></span><span class="paren">)</span> + <span class="sym"><i>β</i><sub>LT</sub></span> · <span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup><span class="paren">)</span> = 0,5 · <span class="paren">(</span>1 + 0,34 · <span class="paren">(</span>0,8535 − 0,4<span class="paren">)</span> + 0,75 · <span class="paren">(</span>0,8535<span class="paren">)</span><sup>2</sup><span class="paren">)</span> = <b>0,8503</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.3(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Reduktionsfaktor</span><span class="sym"><i>χ</i><sub>LT</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i>Φ</i><sub>LT</sub></span> + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="sym"><i>Φ</i><sub>LT</sub></span><sup>2</sup> − <span class="sym"><i>β</i><sub>LT</sub></span> · <span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den">0,8503 + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="paren">(</span>0,8503<span class="paren">)</span><sup>2</sup> − 0,75 · <span class="paren">(</span>0,8535<span class="paren">)</span><sup>2</sup></span></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="paren">(</span>0,8535<span class="paren">)</span><sup>2</sup></span></span><span class="paren">)</span> = <b>0,7871</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.57)</div>
+  </div>
+  <table class="given">
+<tr><td><span class="sym"><i>k</i><sub>c</sub></span></td><td>=</td><td class="v">0,9</td><td class="d">Korrektionsfaktor for momentform</td><td class="r">EN 1993-1-1, tabel 6.6</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Modifikationsfaktor</span><span class="sym"><i>f</i></span> = min<span class="paren">(</span>1; 1 − 0,5 · <span class="paren">(</span>1 − <span class="sym"><i>k</i><sub>c</sub></span><span class="paren">)</span> · <span class="paren">(</span>1 − 2 · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> − 0,8<span class="paren">)</span><sup>2</sup><span class="paren">)</span><span class="paren">)</span> = min<span class="paren">(</span>1; 1 − 0,5 · <span class="paren">(</span>1 − 0,9<span class="paren">)</span> · <span class="paren">(</span>1 − 2 · <span class="paren">(</span>0,8535 − 0,8<span class="paren">)</span><sup>2</sup><span class="paren">)</span><span class="paren">)</span> = <b>0,9503</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.58)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Modificeret reduktionsfaktor</span><span class="sym"><i>χ</i><sub>LT,mod</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>LT</sub></span></span><span class="den"><span class="sym"><i>f</i></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">0,7871</span><span class="den">0,9503</span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="paren">(</span>0,8535<span class="paren">)</span><sup>2</sup></span></span><span class="paren">)</span> = <b>0,8282</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.58)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Kipningsbæreevne</span><span class="sym"><i>M</i><sub>b,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>LT,mod</sub></span> · <span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M1</sub></span></span></span> = <span class="frac"><span class="num">0,8282 · 1260 cm<sup>3</sup> · 355 MPa</span><span class="den">1,2</span></span> = <b>308,6 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.55)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>LT</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>b,Rd</sub></span></span></span> = <span class="frac"><span class="num">210 kNm</span><span class="den">308,6 kNm</span></span> = <b>0,6805</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.54)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 68 % (<span class="sym"><i>M</i><sub>Ed</sub></span> / <span class="sym"><i>M</i><sub>b,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h2 class="element">S1 Søjle akse B2 – HEB 200 S355</h2>
+<p>Pendulsøjle med moment fra excentrisk bjælkeindløb. Afstivet om svag akse midt på.</p><table class="list">
+  <tr><th>Eftervisning</th><th>Afsnit</th><th class="num">Udnyttelse</th><th>Status</th></tr>
+<tr><td>Tværsnitsklassifikation</td><td class="small">EN 1993-1-1, 5.5</td><td class="num">–</td><td><span class="status ok">OK</span></td></tr><tr><td>Bøjningsmoment, tværsnit</td><td class="small">EN 1993-1-1, 6.2.5</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 8.680239930638907%"></span></span>8,68 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Forskydning, tværsnit</td><td class="small">EN 1993-1-1, 6.2.6</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 1.2968143446720215%"></span></span>1,3 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Moment, normalkraft og forskydning, tværsnit</td><td class="small">EN 1993-1-1, 6.2.8–6.2.10</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 30.953676127173544%"></span></span>31 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Søjlefladning (bøjningsudknækning)</td><td class="small">EN 1993-1-1, 6.3.1</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 48.396288129872254%"></span></span>48,4 %</td><td><span class="status ok">OK</span></td></tr><tr><td>Kipning</td><td class="small">EN 1993-1-1, 6.3.2</td><td class="num"><span class="bar-wrap"><span class="bar-fill" style="width: 9.46935265160608%"></span></span>9,47 %</td><td><span class="status ok">OK</span></td></tr></table>
+
+<h3><span>Grundlag</span></h3>
+<div class="steps">
+  <div class="step note info"><div class="body"><b>Profil:</b> HEB 200</div><div class="ref">EN 10365</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>h</i></span></td><td>=</td><td class="v">200 mm</td><td class="d">Højde</td><td class="r"></td></tr><tr><td><span class="sym"><i>b</i></span></td><td>=</td><td class="v">200 mm</td><td class="d">Flangebredde</td><td class="r"></td></tr><tr><td><span class="sym"><i>t</i><sub>w</sub></span></td><td>=</td><td class="v">9 mm</td><td class="d">Kroptykkelse</td><td class="r"></td></tr><tr><td><span class="sym"><i>t</i><sub>f</sub></span></td><td>=</td><td class="v">15 mm</td><td class="d">Flangetykkelse</td><td class="r"></td></tr><tr><td><span class="sym"><i>r</i></span></td><td>=</td><td class="v">18 mm</td><td class="d">Rundingsradius</td><td class="r"></td></tr><tr><td><span class="sym"><i>A</i></span></td><td>=</td><td class="v">78,08 cm<sup>2</sup></td><td class="d">Tværsnitsareal</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>y</sub></span></td><td>=</td><td class="v">5696 cm<sup>4</sup></td><td class="d">Inertimoment, y-akse</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>el,y</sub></span></td><td>=</td><td class="v">569,6 cm<sup>3</sup></td><td class="d">Elastisk modstandsmoment, y</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>pl,y</sub></span></td><td>=</td><td class="v">642,5 cm<sup>3</sup></td><td class="d">Plastisk modstandsmoment, y</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>z</sub></span></td><td>=</td><td class="v">2003 cm<sup>4</sup></td><td class="d">Inertimoment, z-akse</td><td class="r"></td></tr><tr><td><span class="sym"><i>W</i><sub>pl,z</sub></span></td><td>=</td><td class="v">305,8 cm<sup>3</sup></td><td class="d">Plastisk modstandsmoment, z</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>t</sub></span></td><td>=</td><td class="v">59,7 cm<sup>4</sup></td><td class="d">Vridningsinertimoment</td><td class="r"></td></tr><tr><td><span class="sym"><i>I</i><sub>w</sub></span></td><td>=</td><td class="v">171 413 cm<sup>6</sup></td><td class="d">Hvælvningsinertimoment</td><td class="r"></td></tr><tr><td><span class="sym"><i>g</i></span></td><td>=</td><td class="v">61,29 kg/m</td><td class="d">Egenvægt</td><td class="r"></td></tr>  </table>
+  <div class="step note info"><div class="body"><b>Materiale:</b> S355, bestemmende godstykkelse t = 15 mm</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>f</i><sub>y</sub></span></td><td>=</td><td class="v">355 MPa</td><td class="d">Flydespænding</td><td class="r">EN 10025-2:2019, tabel 7 og 8</td></tr><tr><td><span class="sym"><i>f</i><sub>u</sub></span></td><td>=</td><td class="v">470 MPa</td><td class="d">Brudspænding</td><td class="r">EN 10025-2:2019, tabel 7 og 8</td></tr><tr><td><span class="sym"><i>E</i></span></td><td>=</td><td class="v">210 000 MPa</td><td class="d">Elasticitetsmodul</td><td class="r">EN 1993-1-1, 3.2.6(1)</td></tr><tr><td><span class="sym"><i>G</i></span></td><td>=</td><td class="v">81 000 MPa</td><td class="d">Forskydningsmodul</td><td class="r">EN 1993-1-1, 3.2.6(1)</td></tr>  </table>
+  <div class="step note info"><div class="body"><b>Geometri og snitkræfter</b> (regningsmæssige, N<sub>Ed</sub> &gt; 0 er tryk)</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i></span></td><td>=</td><td class="v">5,5 m</td><td class="d">Elementlængde</td><td class="r"></td></tr><tr><td><span class="sym"><i>N</i><sub>Ed</sub></span></td><td>=</td><td class="v">780 kN</td><td class="d">Normalkraft</td><td class="r"></td></tr><tr><td><span class="sym"><i>V</i><sub>Ed</sub></span></td><td>=</td><td class="v">6 kN</td><td class="d">Forskydningskraft</td><td class="r"></td></tr><tr><td><span class="sym"><i>M</i><sub>Ed</sub></span></td><td>=</td><td class="v">18 kNm</td><td class="d">Moment om y-aksen</td><td class="r"></td></tr>  </table>
+</div>
+
+
+<h3><span>1. Tværsnitsklassifikation</span><span class="clause">EN 1993-1-1, 5.5</span></h3>
+<div class="steps">
+  <div class="step">
+    <div class="body"><span class="desc">Materialefaktor</span><span class="sym"><i>ε</i></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">235</span><span class="den"><span class="sym"><i>f</i><sub>y</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">235</span><span class="den">355 MPa</span></span><span class="paren">)</span> = <b>0,8136</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Flangens udragende del</span><span class="sym"><i>c</i><sub>f</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>b</i></span> − <span class="sym"><i>t</i><sub>w</sub></span> − 2 · <span class="sym"><i>r</i></span></span><span class="den">2</span></span> = <span class="frac"><span class="num">200 mm − 9 mm − 2 · 18 mm</span><span class="den">2</span></span> = <b>77,5 mm</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>f</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>f</sub></span></span></span> = 5,167 ≤ 7,323 = 9 · <span class="sym"><i>ε</i></span>
+<span class="verdict">→ Flange: klasse 1</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Kroppens fri højde</span><span class="sym"><i>c</i><sub>w</sub></span> = <span class="sym"><i>h</i></span> − 2 · <span class="sym"><i>t</i><sub>f</sub></span> − 2 · <span class="sym"><i>r</i></span> = 200 mm − 2 · 15 mm − 2 · 18 mm = <b>134 mm</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step note info"><div class="body">Krop påvirket af bøjning og tryk</div><div class="ref"></div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Andel af kroppen i tryk (plastisk)</span><span class="sym"><i>α</i></span> = min<span class="paren">(</span>1; 0,5 · <span class="paren">(</span>1 + <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>c</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span></span><span class="paren">)</span><span class="paren">)</span> = min<span class="paren">(</span>1; 0,5 · <span class="paren">(</span>1 + <span class="frac"><span class="num">780 kN</span><span class="den">134 mm · 9 mm · 355 MPa</span></span><span class="paren">)</span><span class="paren">)</span> = <b>1</b>
+</div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div>
+  </div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>w</sub></span></span></span> = 14,89 ≤ 26,85 = <span class="frac"><span class="num">396 · <span class="sym"><i>ε</i></span></span><span class="den">13 · <span class="sym"><i>α</i></span> − 1</span></span>
+<span class="verdict">→ Krop: klasse 1</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step note info"><div class="body"><b>Tværsnittet er i klasse 1</b> for den aktuelle påvirkning.</div><div class="ref"></div></div>
+  <div class="step note info"><div class="body">Klasse for rent tryk (anvendes ved søjlefladning):</div><div class="ref"></div></div>
+  <div class="step note info"><div class="body">Krop påvirket af tryk</div><div class="ref"></div></div>
+  <div class="step"><div class="body"><span class="frac"><span class="num"><span class="sym"><i>c</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>w</sub></span></span></span> = 14,89 ≤ 26,85 = 33 · <span class="sym"><i>ε</i></span>
+<span class="verdict">→ Krop: klasse 1</span></div>
+    <div class="ref">EN 1993-1-1, tabel 5.2</div></div>
+  <div class="step note info"><div class="body"><b>Klasse 1</b> for rent tryk.</div><div class="ref"></div></div>
+</div>
+
+<div class="result">Klasse 1 – <span class="status ok">OK</span></div>
+<h3><span>2. Bøjningsmoment, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.5</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr>  </table>
+  <div class="step note info"><div class="body">Klasse 1: plastisk modstandsmoment anvendes.</div><div class="ref">6.2.5(2), (6.13)</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Modstandsmoment</span><span class="sym"><i>W</i><sub>y</sub></span> = <span class="sym"><i>W</i><sub>pl,y</sub></span> = <b>642,5 cm<sup>3</sup></b>
+</div>
+    <div class="ref"></div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Momentbæreevne</span><span class="sym"><i>M</i><sub>c,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">642,5 cm<sup>3</sup> · 355 MPa</span><span class="den">1,1</span></span> = <b>207,4 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.13)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>M</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>c,Rd</sub></span></span></span> = <span class="frac"><span class="num">18 kNm</span><span class="den">207,4 kNm</span></span> = <b>0,0868</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.12)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 8,68 % (<span class="sym"><i>M</i><sub>Ed</sub></span> / <span class="sym"><i>M</i><sub>c,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>3. Forskydning, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.6</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>η</i></span></td><td>=</td><td class="v">1,2</td><td class="d">Faktor for forskydningsareal</td><td class="r">EN 1993-1-5, 5.1(2)</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Forskydningsareal, valsede I-profiler</span><span class="sym"><i>A</i><sub>v</sub></span> = max<span class="paren">(</span><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span> + <span class="paren">(</span><span class="sym"><i>t</i><sub>w</sub></span> + 2 · <span class="sym"><i>r</i></span><span class="paren">)</span> · <span class="sym"><i>t</i><sub>f</sub></span>; <span class="sym"><i>η</i></span> · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span><span class="paren">)</span> = max<span class="paren">(</span>78,08 cm<sup>2</sup> − 2 · 200 mm · 15 mm + <span class="paren">(</span>9 mm + 2 · 18 mm<span class="paren">)</span> · 15 mm; 1,2 · 170 mm · 9 mm<span class="paren">)</span> = <b>24,83 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.6(3)a</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk forskydningsbæreevne</span><span class="sym"><i>V</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>A</i><sub>v</sub></span> · <span class="frac"><span class="num"><span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">24,83 cm<sup>2</sup> · <span class="frac"><span class="num">355 MPa</span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den">1,1</span></span> = <b>462,7 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.18)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Kontrol af forskydningsbuling</span><span class="frac"><span class="num"><span class="sym"><i>h</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>t</i><sub>w</sub></span></span></span> = 18,89 ≤ 48,82 = <span class="frac"><span class="num">72 · <span class="sym"><i>ε</i></span></span><span class="den"><span class="sym"><i>η</i></span></span></span>
+<span class="verdict">→ forskydningsbuling skal ikke eftervises</span></div>
+    <div class="ref">EN 1993-1-1, 6.2.6(6)</div></div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>V</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>V</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>V</i><sub>pl,Rd</sub></span></span></span> = <span class="frac"><span class="num">6 kN</span><span class="den">462,7 kN</span></span> = <b>0,01297</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.17)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 1,3 % (<span class="sym"><i>V</i><sub>Ed</sub></span> / <span class="sym"><i>V</i><sub>pl,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>4. Moment, normalkraft og forskydning, tværsnit</span><span class="clause">EN 1993-1-1, 6.2.8–6.2.10</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M0</sub></span></td><td>=</td><td class="v">1,1</td><td class="d">Partialkoefficient, tværsnitsbæreevne</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr><tr><td><span class="sym"><i>η</i></span></td><td>=</td><td class="v">1,2</td><td class="d">Faktor for forskydningsareal</td><td class="r">EN 1993-1-5, 5.1(2)</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Forskydningsareal</span><span class="sym"><i>A</i><sub>v</sub></span> = max<span class="paren">(</span><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span> + <span class="paren">(</span><span class="sym"><i>t</i><sub>w</sub></span> + 2 · <span class="sym"><i>r</i></span><span class="paren">)</span> · <span class="sym"><i>t</i><sub>f</sub></span>; <span class="sym"><i>η</i></span> · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span><span class="paren">)</span> = max<span class="paren">(</span>78,08 cm<sup>2</sup> − 2 · 200 mm · 15 mm + <span class="paren">(</span>9 mm + 2 · 18 mm<span class="paren">)</span> · 15 mm; 1,2 · 170 mm · 9 mm<span class="paren">)</span> = <b>24,83 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.6(3)a</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk forskydningsbæreevne</span><span class="sym"><i>V</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>A</i><sub>v</sub></span> · <span class="frac"><span class="num"><span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num">24,83 cm<sup>2</sup> · <span class="frac"><span class="num">355 MPa</span><span class="den"><span class="sqrt"><span class="rad">√</span><span class="radicand">3</span></span></span></span></span><span class="den">1,1</span></span> = <b>462,7 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.18)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Forskydningens indflydelse</span><span class="sym"><i>V</i><sub>Ed</sub></span> = 6 kN ≤ 231,3 kN = 0,5 · <span class="sym"><i>V</i><sub>pl,Rd</sub></span>
+<span class="verdict">→ ingen reduktion for forskydning</span></div>
+    <div class="ref">EN 1993-1-1, 6.2.8(2)</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>ρ</i></span></td><td>=</td><td class="v">0</td><td class="d">Reduktionsfaktor for forskydning</td><td class="r"></td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Kropsareal</span><span class="sym"><i>A</i><sub>w</sub></span> = <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span> = 170 mm · 9 mm = <b>15,3 cm<sup>2</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.8(5)</div>
+  </div>
+  <div class="step note info"><div class="body">Klasse 1 eller 2: plastisk interaktion.</div><div class="ref"></div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk normalkraftbæreevne (reduceret flydespænding i kroppen ved forskydning)</span><span class="sym"><i>N</i><sub>pl,Rd</sub></span> = <span class="frac"><span class="num"><span class="paren">(</span><span class="sym"><i>A</i></span> − <span class="sym"><i>ρ</i></span> · <span class="sym"><i>A</i><sub>w</sub></span><span class="paren">)</span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num"><span class="paren">(</span>78,08 cm<sup>2</sup> − 0 · 15,3 cm<sup>2</sup><span class="paren">)</span> · 355 MPa</span><span class="den">1,1</span></span> = <b>2520 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.6) og 6.2.10(3)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Plastisk momentbæreevne inkl. forskydning</span><span class="sym"><i>M</i><sub>pl,y,V,Rd</sub></span> = <span class="frac"><span class="num"><span class="paren">(</span><span class="sym"><i>W</i><sub>pl,y</sub></span> − <span class="frac"><span class="num"><span class="sym"><i>ρ</i></span> · <span class="sym"><i>A</i><sub>w</sub></span><sup>2</sup></span><span class="den">4 · <span class="sym"><i>t</i><sub>w</sub></span></span></span><span class="paren">)</span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span> = <span class="frac"><span class="num"><span class="paren">(</span>642,5 cm<sup>3</sup> − <span class="frac"><span class="num">0 · <span class="paren">(</span>15,3 cm<sup>2</sup><span class="paren">)</span><sup>2</sup></span><span class="den">4 · 9 mm</span></span><span class="paren">)</span> · 355 MPa</span><span class="den">1,1</span></span> = <b>207,4 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.30)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Normalkraftforhold</span><span class="sym"><i>n</i></span> = <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>pl,Rd</sub></span></span></span> = <span class="frac"><span class="num">780 kN</span><span class="den">2520 kN</span></span> = <b>0,3095</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.9.1(5)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Kropsandel</span><span class="sym"><i>a</i></span> = min<span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>A</i></span> − 2 · <span class="sym"><i>b</i></span> · <span class="sym"><i>t</i><sub>f</sub></span></span><span class="den"><span class="sym"><i>A</i></span></span></span>; 0,5<span class="paren">)</span> = min<span class="paren">(</span><span class="frac"><span class="num">78,08 cm<sup>2</sup> − 2 · 200 mm · 15 mm</span><span class="den">78,08 cm<sup>2</sup></span></span>; 0,5<span class="paren">)</span> = <b>0,2316</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.2.9.1(5)</div>
+  </div>
+  <div class="step"><div class="body"><span class="desc">Normalkraftens indflydelse</span><span class="sym"><i>N</i><sub>Ed</sub></span> = 780 kN &gt; 630 kN = 0,25 · <span class="sym"><i>N</i><sub>pl,Rd</sub></span>
+</div>
+    <div class="ref">EN 1993-1-1, (6.33)</div></div>
+  <div class="step"><div class="body"><span class="sym"><i>N</i><sub>Ed</sub></span> = 780 kN &gt; 246,9 kN = <span class="frac"><span class="num">0,5 · <span class="sym"><i>h</i><sub>w</sub></span> · <span class="sym"><i>t</i><sub>w</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M0</sub></span></span></span>
+</div>
+    <div class="ref">EN 1993-1-1, (6.34)</div></div>
+  <div class="step">
+    <div class="body"><span class="desc">Reduceret momentbæreevne</span><span class="sym"><i>M</i><sub>N,y,Rd</sub></span> = min<span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>M</i><sub>pl,y,V,Rd</sub></span> · <span class="paren">(</span>1 − <span class="sym"><i>n</i></span><span class="paren">)</span></span><span class="den">1 − 0,5 · <span class="sym"><i>a</i></span></span></span>; <span class="sym"><i>M</i><sub>pl,y,V,Rd</sub></span><span class="paren">)</span> = min<span class="paren">(</span><span class="frac"><span class="num">207,4 kNm · <span class="paren">(</span>1 − 0,3095<span class="paren">)</span></span><span class="den">1 − 0,5 · 0,2316</span></span>; 207,4 kNm<span class="paren">)</span> = <b>161,9 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.36)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>N</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>pl,Rd</sub></span></span></span> = <span class="frac"><span class="num">780 kN</span><span class="den">2520 kN</span></span> = <b>0,3095</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.9)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>MN</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>N,y,Rd</sub></span></span></span> = <span class="frac"><span class="num">18 kNm</span><span class="den">161,9 kNm</span></span> = <b>0,1112</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.31)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 31 % (<span class="sym"><i>N</i><sub>Ed</sub></span> / <span class="sym"><i>N</i><sub>pl,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>5. Søjlefladning (bøjningsudknækning)</span><span class="clause">EN 1993-1-1, 6.3.1</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M1</sub></span></td><td>=</td><td class="v">1,2</td><td class="d">Partialkoefficient, stabilitet</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr>  </table>
+  <div class="step note info"><div class="body">Valset I-profil, h/b = 1, t<sub>f</sub> = 15 mm</div><div class="ref">EN 1993-1-1, tabel 6.2</div></div>
+  <div class="step note info"><div class="body"><b>Udknækning om y-aksen</b></div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i><sub>cr,y</sub></span></td><td>=</td><td class="v">5,5 m</td><td class="d">Knæklængde</td><td class="r"></td></tr><tr><td><span class="sym"><i>α</i><sub>y</sub></span></td><td>=</td><td class="v">0,34</td><td class="d">Imperfektionsfaktor, kurve b</td><td class="r">EN 1993-1-1, tabel 6.2 og 6.1</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Kritisk normalkraft</span><span class="sym"><i>N</i><sub>cr,y</sub></span> = <span class="frac"><span class="num">π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>L</i><sub>cr,y</sub></span><sup>2</sup></span></span> = <span class="frac"><span class="num">π<sup>2</sup> · 210 000 MPa · 5696 cm<sup>4</sup></span><span class="den"><span class="paren">(</span>5,5 m<span class="paren">)</span><sup>2</sup></span></span> = <b>3903 kN</b>
+</div>
+    <div class="ref"></div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Relativt slankhedsforhold</span><span class="sym"><i><span class="bar">λ</span></i><sub>y</sub></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>A</i></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>cr,y</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">78,08 cm<sup>2</sup> · 355 MPa</span><span class="den">3903 kN</span></span><span class="paren">)</span> = <b>0,8428</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.50)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="sym"><i>Φ</i><sub>y</sub></span> = 0,5 · <span class="paren">(</span>1 + <span class="sym"><i>α</i><sub>y</sub></span> · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>y</sub></span> − 0,2<span class="paren">)</span> + <span class="sym"><i><span class="bar">λ</span></i><sub>y</sub></span><sup>2</sup><span class="paren">)</span> = 0,5 · <span class="paren">(</span>1 + 0,34 · <span class="paren">(</span>0,8428 − 0,2<span class="paren">)</span> + <span class="paren">(</span>0,8428<span class="paren">)</span><sup>2</sup><span class="paren">)</span> = <b>0,9644</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.1.2(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Reduktionsfaktor</span><span class="sym"><i>χ</i><sub>y</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i>Φ</i><sub>y</sub></span> + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="sym"><i>Φ</i><sub>y</sub></span><sup>2</sup> − <span class="sym"><i><span class="bar">λ</span></i><sub>y</sub></span><sup>2</sup></span></span></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den">0,9644 + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="paren">(</span>0,9644<span class="paren">)</span><sup>2</sup> − <span class="paren">(</span>0,8428<span class="paren">)</span><sup>2</sup></span></span></span></span><span class="paren">)</span> = <b>0,6977</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.49)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Fladningsbæreevne</span><span class="sym"><i>N</i><sub>b,y,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>y</sub></span> · <span class="sym"><i>A</i></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M1</sub></span></span></span> = <span class="frac"><span class="num">0,6977 · 78,08 cm<sup>2</sup> · 355 MPa</span><span class="den">1,2</span></span> = <b>1612 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.47)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>N,y</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>b,y,Rd</sub></span></span></span> = <span class="frac"><span class="num">780 kN</span><span class="den">1612 kN</span></span> = <b>0,484</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.46)</div>
+  </div>
+  <div class="step note info"><div class="body"><b>Udknækning om z-aksen</b></div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i><sub>cr,z</sub></span></td><td>=</td><td class="v">2,75 m</td><td class="d">Knæklængde</td><td class="r"></td></tr><tr><td><span class="sym"><i>α</i><sub>z</sub></span></td><td>=</td><td class="v">0,49</td><td class="d">Imperfektionsfaktor, kurve c</td><td class="r">EN 1993-1-1, tabel 6.2 og 6.1</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Kritisk normalkraft</span><span class="sym"><i>N</i><sub>cr,z</sub></span> = <span class="frac"><span class="num">π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>z</sub></span></span><span class="den"><span class="sym"><i>L</i><sub>cr,z</sub></span><sup>2</sup></span></span> = <span class="frac"><span class="num">π<sup>2</sup> · 210 000 MPa · 2003 cm<sup>4</sup></span><span class="den"><span class="paren">(</span>2,75 m<span class="paren">)</span><sup>2</sup></span></span> = <b>5491 kN</b>
+</div>
+    <div class="ref"></div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Relativt slankhedsforhold</span><span class="sym"><i><span class="bar">λ</span></i><sub>z</sub></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>A</i></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>cr,z</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">78,08 cm<sup>2</sup> · 355 MPa</span><span class="den">5491 kN</span></span><span class="paren">)</span> = <b>0,7105</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.50)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="sym"><i>Φ</i><sub>z</sub></span> = 0,5 · <span class="paren">(</span>1 + <span class="sym"><i>α</i><sub>z</sub></span> · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>z</sub></span> − 0,2<span class="paren">)</span> + <span class="sym"><i><span class="bar">λ</span></i><sub>z</sub></span><sup>2</sup><span class="paren">)</span> = 0,5 · <span class="paren">(</span>1 + 0,49 · <span class="paren">(</span>0,7105 − 0,2<span class="paren">)</span> + <span class="paren">(</span>0,7105<span class="paren">)</span><sup>2</sup><span class="paren">)</span> = <b>0,8775</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.1.2(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Reduktionsfaktor</span><span class="sym"><i>χ</i><sub>z</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i>Φ</i><sub>z</sub></span> + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="sym"><i>Φ</i><sub>z</sub></span><sup>2</sup> − <span class="sym"><i><span class="bar">λ</span></i><sub>z</sub></span><sup>2</sup></span></span></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den">0,8775 + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="paren">(</span>0,8775<span class="paren">)</span><sup>2</sup> − <span class="paren">(</span>0,7105<span class="paren">)</span><sup>2</sup></span></span></span></span><span class="paren">)</span> = <b>0,7182</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.49)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Fladningsbæreevne</span><span class="sym"><i>N</i><sub>b,z,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>z</sub></span> · <span class="sym"><i>A</i></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M1</sub></span></span></span> = <span class="frac"><span class="num">0,7182 · 78,08 cm<sup>2</sup> · 355 MPa</span><span class="den">1,2</span></span> = <b>1659 kN</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.47)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>N,z</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>N</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>N</i><sub>b,z,Rd</sub></span></span></span> = <span class="frac"><span class="num">780 kN</span><span class="den">1659 kN</span></span> = <b>0,4702</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.46)</div>
+  </div>
+  <div class="step note warn"><div class="body"><b>Bemærk:</b> Elementet har både tryk og moment. Stabilitetsinteraktion efter 6.3.3 (formel 6.61/6.62) skal også eftervises og er ikke med i denne version.</div><div class="ref">EN 1993-1-1, 6.3.3</div></div>
+</div>
+
+<div class="result">Udnyttelse 48,4 % (<span class="sym"><i>N</i><sub>Ed</sub></span> / <span class="sym"><i>N</i><sub>b,y,Rd</sub></span>) – <span class="status ok">OK</span></div>
+<h3><span>6. Kipning</span><span class="clause">EN 1993-1-1, 6.3.2</span></h3>
+<div class="steps">
+  <table class="given">
+<tr><td><span class="sym"><i>γ</i><sub>M1</sub></span></td><td>=</td><td class="v">1,2</td><td class="d">Partialkoefficient, stabilitet</td><td class="r">DS/EN 1993-1-1 DK NA, 6.1(1)</td></tr>  </table>
+  <div class="step note info"><div class="body">Momentform: lineær momentfordeling, ψ = 0.</div><div class="ref"></div></div>
+  <table class="given">
+<tr><td><span class="sym"><i>L</i><sub>LT</sub></span></td><td>=</td><td class="v">5,5 m</td><td class="d">Kiplængde (afstand mellem kipafstivninger)</td><td class="r"></td></tr><tr><td><span class="sym"><i>C</i><sub>1</sub></span></td><td>=</td><td class="v">1,88</td><td class="d">Momentfaktor</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>C</i><sub>2</sub></span></td><td>=</td><td class="v">0</td><td class="d">Faktor for lastplacering</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>z</i><sub>g</sub></span></td><td>=</td><td class="v">0 mm</td><td class="d">Lastangrebspunkt over forskydningscenter (forskydningscenter)</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>k</i></span></td><td>=</td><td class="v">1</td><td class="d">Effektiv-længdefaktor, sideudbøjning</td><td class="r">NCCI SN003</td></tr><tr><td><span class="sym"><i>k</i><sub>w</sub></span></td><td>=</td><td class="v">1</td><td class="d">Effektiv-længdefaktor, hvælving</td><td class="r">NCCI SN003</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Elastisk kritisk kipmoment</span><span class="sym"><i>M</i><sub>cr</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>C</i><sub>1</sub></span> · π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>z</sub></span></span><span class="den"><span class="paren">(</span><span class="sym"><i>k</i></span> · <span class="sym"><i>L</i><sub>LT</sub></span><span class="paren">)</span><sup>2</sup></span></span> · <span class="paren">(</span><span class="rad">√</span><span class="paren">(</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>k</i></span></span><span class="den"><span class="sym"><i>k</i><sub>w</sub></span></span></span><span class="paren">)</span><sup>2</sup> · <span class="frac"><span class="num"><span class="sym"><i>I</i><sub>w</sub></span></span><span class="den"><span class="sym"><i>I</i><sub>z</sub></span></span></span> + <span class="frac"><span class="num"><span class="paren">(</span><span class="sym"><i>k</i></span> · <span class="sym"><i>L</i><sub>LT</sub></span><span class="paren">)</span><sup>2</sup> · <span class="sym"><i>G</i></span> · <span class="sym"><i>I</i><sub>t</sub></span></span><span class="den">π<sup>2</sup> · <span class="sym"><i>E</i></span> · <span class="sym"><i>I</i><sub>z</sub></span></span></span> + <span class="paren">(</span><span class="sym"><i>C</i><sub>2</sub></span> · <span class="sym"><i>z</i><sub>g</sub></span><span class="paren">)</span><sup>2</sup><span class="paren">)</span> − <span class="sym"><i>C</i><sub>2</sub></span> · <span class="sym"><i>z</i><sub>g</sub></span><span class="paren">)</span> = <span class="frac"><span class="num">1,88 · π<sup>2</sup> · 210 000 MPa · 2003 cm<sup>4</sup></span><span class="den"><span class="paren">(</span>1 · 5,5 m<span class="paren">)</span><sup>2</sup></span></span> · <span class="paren">(</span><span class="rad">√</span><span class="paren">(</span><span class="paren">(</span><span class="frac"><span class="num">1</span><span class="den">1</span></span><span class="paren">)</span><sup>2</sup> · <span class="frac"><span class="num">171 413 cm<sup>6</sup></span><span class="den">2003 cm<sup>4</sup></span></span> + <span class="frac"><span class="num"><span class="paren">(</span>1 · 5,5 m<span class="paren">)</span><sup>2</sup> · 81 000 MPa · 59,7 cm<sup>4</sup></span><span class="den">π<sup>2</sup> · 210 000 MPa · 2003 cm<sup>4</sup></span></span> + <span class="paren">(</span>0 · 0 mm<span class="paren">)</span><sup>2</sup><span class="paren">)</span> − 0 · 0 mm<span class="paren">)</span> = <b>540 kNm</b>
+</div>
+    <div class="ref">NCCI SN003</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Modstandsmoment (klasse 1)</span><span class="sym"><i>W</i><sub>y</sub></span> = <span class="sym"><i>W</i><sub>pl,y</sub></span> = <b>642,5 cm<sup>3</sup></b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.2(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Relativt slankhedsforhold</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num"><span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>cr</sub></span></span></span><span class="paren">)</span> = <span class="rad">√</span><span class="paren">(</span><span class="frac"><span class="num">642,5 cm<sup>3</sup> · 355 MPa</span><span class="den">540 kNm</span></span><span class="paren">)</span> = <b>0,6499</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.2(1)</div>
+  </div>
+  <div class="step note info"><div class="body">Metode for valsede profiler og tilsvarende svejste profiler.</div><div class="ref">EN 1993-1-1, 6.3.2.3</div></div>
+  <table class="given">
+<tr><td><span class="sym"><i><span class="bar">λ</span></i><sub>LT,0</sub></span></td><td>=</td><td class="v">0,4</td><td class="d">Plateaulængde for kipning (valsede profiler)</td><td class="r">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i>β</i><sub>LT</sub></span></td><td>=</td><td class="v">0,75</td><td class="d">Korrektionsfaktor for kipning (valsede profiler)</td><td class="r">EN 1993-1-1, 6.3.2.3(1)</td></tr><tr><td><span class="sym"><i>α</i><sub>LT</sub></span></td><td>=</td><td class="v">0,34</td><td class="d">Imperfektionsfaktor, kipkurve b (h/b = 1)</td><td class="r">EN 1993-1-1, tabel 6.5 / tabel 6.3</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="sym"><i>Φ</i><sub>LT</sub></span> = 0,5 · <span class="paren">(</span>1 + <span class="sym"><i>α</i><sub>LT</sub></span> · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> − <span class="sym"><i><span class="bar">λ</span></i><sub>LT,0</sub></span><span class="paren">)</span> + <span class="sym"><i>β</i><sub>LT</sub></span> · <span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup><span class="paren">)</span> = 0,5 · <span class="paren">(</span>1 + 0,34 · <span class="paren">(</span>0,6499 − 0,4<span class="paren">)</span> + 0,75 · <span class="paren">(</span>0,6499<span class="paren">)</span><sup>2</sup><span class="paren">)</span> = <b>0,7009</b>
+</div>
+    <div class="ref">EN 1993-1-1, 6.3.2.3(1)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Reduktionsfaktor</span><span class="sym"><i>χ</i><sub>LT</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i>Φ</i><sub>LT</sub></span> + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="sym"><i>Φ</i><sub>LT</sub></span><sup>2</sup> − <span class="sym"><i>β</i><sub>LT</sub></span> · <span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">1</span><span class="den">0,7009 + <span class="sqrt"><span class="rad">√</span><span class="radicand"><span class="paren">(</span>0,7009<span class="paren">)</span><sup>2</sup> − 0,75 · <span class="paren">(</span>0,6499<span class="paren">)</span><sup>2</sup></span></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="paren">(</span>0,6499<span class="paren">)</span><sup>2</sup></span></span><span class="paren">)</span> = <b>0,894</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.57)</div>
+  </div>
+  <table class="given">
+<tr><td><span class="sym"><i>k</i><sub>c</sub></span></td><td>=</td><td class="v">0,7519</td><td class="d">Korrektionsfaktor for momentform</td><td class="r">EN 1993-1-1, tabel 6.6</td></tr>  </table>
+  <div class="step">
+    <div class="body"><span class="desc">Modifikationsfaktor</span><span class="sym"><i>f</i></span> = min<span class="paren">(</span>1; 1 − 0,5 · <span class="paren">(</span>1 − <span class="sym"><i>k</i><sub>c</sub></span><span class="paren">)</span> · <span class="paren">(</span>1 − 2 · <span class="paren">(</span><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span> − 0,8<span class="paren">)</span><sup>2</sup><span class="paren">)</span><span class="paren">)</span> = min<span class="paren">(</span>1; 1 − 0,5 · <span class="paren">(</span>1 − 0,7519<span class="paren">)</span> · <span class="paren">(</span>1 − 2 · <span class="paren">(</span>0,6499 − 0,8<span class="paren">)</span><sup>2</sup><span class="paren">)</span><span class="paren">)</span> = <b>0,8815</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.58)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Modificeret reduktionsfaktor</span><span class="sym"><i>χ</i><sub>LT,mod</sub></span> = min<span class="paren">(</span>1; <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>LT</sub></span></span><span class="den"><span class="sym"><i>f</i></span></span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="sym"><i><span class="bar">λ</span></i><sub>LT</sub></span><sup>2</sup></span></span><span class="paren">)</span> = min<span class="paren">(</span>1; <span class="frac"><span class="num">0,894</span><span class="den">0,8815</span></span>; <span class="frac"><span class="num">1</span><span class="den"><span class="paren">(</span>0,6499<span class="paren">)</span><sup>2</sup></span></span><span class="paren">)</span> = <b>1</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.58)</div>
+  </div>
+  <div class="step">
+    <div class="body"><span class="desc">Kipningsbæreevne</span><span class="sym"><i>M</i><sub>b,Rd</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>χ</i><sub>LT,mod</sub></span> · <span class="sym"><i>W</i><sub>y</sub></span> · <span class="sym"><i>f</i><sub>y</sub></span></span><span class="den"><span class="sym"><i>γ</i><sub>M1</sub></span></span></span> = <span class="frac"><span class="num">1 · 642,5 cm<sup>3</sup> · 355 MPa</span><span class="den">1,2</span></span> = <b>190,1 kNm</b>
+</div>
+    <div class="ref">EN 1993-1-1, (6.55)</div>
+  </div>
+  <div class="step util">
+    <div class="body"><span class="desc">Udnyttelsesgrad</span><span class="sym"><i>η</i><sub>LT</sub></span> = <span class="frac"><span class="num"><span class="sym"><i>M</i><sub>Ed</sub></span></span><span class="den"><span class="sym"><i>M</i><sub>b,Rd</sub></span></span></span> = <span class="frac"><span class="num">18 kNm</span><span class="den">190,1 kNm</span></span> = <b>0,09469</b>
+<span class="verdict">≤ 1,0 OK</span></div>
+    <div class="ref">EN 1993-1-1, (6.54)</div>
+  </div>
+</div>
+
+<div class="result">Udnyttelse 9,47 % (<span class="sym"><i>M</i><sub>Ed</sub></span> / <span class="sym"><i>M</i><sub>b,Rd</sub></span>) – <span class="status ok">OK</span></div>
+
+<p class="small" style="margin-top: 24pt">Rapporten er genereret automatisk med beregn 0.1.0 den 08.11.2026. Formler, indsatte værdier og resultater er udskrevet direkte fra beregningen.</p>
+</div>
+</body>
+</html>

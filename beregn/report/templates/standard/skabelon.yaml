@@ -1,0 +1,8 @@
+# Firmaskabelon. Kopiér mappen 'standard', ret felterne og peg på den med --skabelon.
+firma:
+  navn: "Rådgivende Ingeniører A/S"
+  adresse: "Eksempelvej 1, 8000 Aarhus C"
+  cvr: ""
+  logo: ""            # sti til logo (png/svg), relativt til denne mappe
+farve: "#1f4e79"      # accentfarve i rapporten
+sprog: da

@@ -1,0 +1,39 @@
+# DS/EN 1993-1-1 DK NA – dansk nationalt anneks.
+# Arver alt fra de anbefalede værdier og overskriver kun det, der afviger.
+#
+# VIGTIGT: Værdierne er indtastet som udgangspunkt og SKAL kontrolleres mod den
+# gældende udgave af DK NA, før værktøjet bruges i projekter. Ret 'status' når
+# filen er gennemgået.
+arver: anbefalet
+navn: "DS/EN 1993-1-1 med DK NA"
+standard: "DS/EN 1993-1-1 + DK NA"
+status: "UDKAST – skal verificeres mod gældende DK NA"
+
+valg:
+  kontrolklasse:
+    beskrivelse: "Kontrolklasse"
+    standard: normal
+    tilladte: [skaerpet, normal, lempet]
+
+parametre:
+  gamma_3:
+    afhaenger_af: kontrolklasse
+    vaerdier: {skaerpet: 0.95, normal: 1.00, lempet: 1.10}
+    beskrivelse: "Faktor for kontrolklasse"
+    kilde: "DS/EN 1993-1-1 DK NA, 6.1(1)"
+  gamma_M0:
+    udtryk: "1.10 * gamma_3"
+    beskrivelse: "Partialkoefficient, tværsnitsbæreevne"
+    kilde: "DS/EN 1993-1-1 DK NA, 6.1(1)"
+  gamma_M1:
+    udtryk: "1.20 * gamma_3"
+    beskrivelse: "Partialkoefficient, stabilitet"
+    kilde: "DS/EN 1993-1-1 DK NA, 6.1(1)"
+  gamma_M2:
+    udtryk: "1.35 * gamma_3"
+    beskrivelse: "Partialkoefficient, brud i træk"
+    kilde: "DS/EN 1993-1-1 DK NA, 6.1(1)"
+  fy_kilde:
+    vaerdi: "produktstandard"
+    beskrivelse: "fy og fu tages fra produktstandarden"
+    kilde: "DS/EN 1993-1-1 DK NA, 3.2.1(1)"

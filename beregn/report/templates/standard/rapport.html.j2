@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ projekt.get('navn', 'Beregning') }} – statisk beregning</title>
+<style>{{ css }} :root { --accent: {{ skabelon.farve }}; }</style>
+</head>
+<body>
+<div class="page">
+<span class="running-firma">{{ skabelon.firma.navn }}</span>
+<span class="running-sag">{{ projekt.get('sagsnr', '') }} {{ projekt.get('navn', '') }}</span>
+
+{% macro steps(list) %}
+<div class="steps">
+{% for s in list %}
+  {% if s.kind == 'given' %}
+  <table class="given">
+    {% for r in s.rows %}<tr><td>{{ r.sym }}</td><td>=</td><td class="v">{{ r.value }}</td><td class="d">{{ r.desc }}</td><td class="r">{{ r.ref }}</td></tr>{% endfor %}
+  </table>
+  {% elif s.kind == 'eq' %}
+  <div class="step{% if s.util %} util{% if s.value > 1.0 + 1e-9 %} fail{% endif %}{% endif %}">
+    <div class="body">{% if s.desc %}<span class="desc">{{ s.desc }}</span>{% endif %}{{ s.html }}
+      {% if s.util %}<span class="verdict{% if s.value > 1.0 + 1e-9 %} no{% endif %}">{{ '≤ 1,0 OK' if s.value <= 1.0 + 1e-9 else '&gt; 1,0 IKKE OK' }}</span>{% endif %}</div>
+    <div class="ref">{{ s.ref }}</div>
+  </div>
+  {% elif s.kind == 'cond' %}
+  <div class="step"><div class="body">{% if s.desc %}<span class="desc">{{ s.desc }}</span>{% endif %}{{ s.html }}
+    {% if s.verdict %}<span class="verdict{% if not s.passed %} no{% endif %}">→ {{ s.verdict }}</span>{% endif %}</div>
+    <div class="ref">{{ s.ref }}</div></div>
+  {% else %}
+  <div class="step note {{ s.level }}"><div class="body">{{ s.html }}</div><div class="ref">{{ s.ref }}</div></div>
+  {% endif %}
+{% endfor %}
+</div>
+{% endmacro %}
+
+{% macro status(st) -%}
+<span class="status {{ {'OK':'ok','IKKE OK':'fail','Ikke relevant':'na'}.get(st, 'unsup') }}">{{ st }}</span>
+{%- endmacro %}
+
+{% macro bar(u) -%}
+{% if u is not none %}<span class="bar-wrap"><span class="bar-fill{% if u > 1 %} fail{% endif %}" style="width: {{ [u*100, 100]|min }}%"></span></span>{{ fmt(u*100, 3) }} %{% else %}–{% endif %}
+{%- endmacro %}
+
+<div class="header">
+  <div>
+    <h1>Statisk beregning</h1>
+    <div style="font-size: 11pt">{{ projekt.get('navn', '') }}</div>
+    {% if projekt.get('emne') %}<div class="small">{{ projekt.emne }}</div>{% endif %}
+  </div>
+  <div class="firm">
+    {% if logo %}<img src="{{ logo }}" alt=""><br>{% endif %}
+    <b>{{ skabelon.firma.navn }}</b><br>{{ skabelon.firma.adresse }}
+  </div>
+</div>
+
+<table class="meta">
+  <tr><td>Sagsnr.</td><td>{{ projekt.get('sagsnr', '') }}</td><td>Dato</td><td>{{ projekt.get('dato', dato) }}</td></tr>
+  <tr><td>Udført af</td><td>{{ projekt.get('udfoert_af', '') }}</td><td>Revision</td><td>{{ projekt.get('revision', '') }}</td></tr>
+  <tr><td>Kontrolleret af</td><td>{{ projekt.get('kontrolleret_af', '') }}</td><td>Konsekvensklasse</td><td>{{ projekt.get('konsekvensklasse', '') }}</td></tr>
+</table>
+
+<h2>Normgrundlag</h2>
+<p>{{ norm.name }}{% for k, v in norm.options.items() %} · {{ k }}: <b>{{ v }}</b>{% endfor %}</p>
+{% if 'UDKAST' in norm.status.upper() %}<div class="banner"><b>Bemærk:</b> {{ norm.status }}. Normparametrene er ikke gennemgået og godkendt.</div>{% endif %}
+<table class="list">
+  <tr><th>Parameter</th><th class="num">Værdi</th><th>Beskrivelse</th><th>Kilde</th></tr>
+  {% for p in norm_params %}<tr><td>{{ p.sym }}</td><td class="num">{{ p.value }}</td><td>{{ p.desc }}</td><td class="small">{{ p.source }}</td></tr>{% endfor %}
+</table>
+<p class="small">Regningsmæssige snitkræfter er bestemt i en særskilt beregning (DS/EN 1990 med DK NA). Fortegn: N<sub>Ed</sub> &gt; 0 er tryk.</p>
+
+<h2>Oversigt</h2>
+<table class="list">
+  <tr><th>Element</th><th>Profil</th><th>Stål</th><th>Styrende eftervisning</th><th>Udnyttelse</th><th>Status</th></tr>
+  {% for e in elementer %}
+  <tr><td><b>{{ e.navn }}</b></td><td>{{ e.profil }}</td><td>{{ e.staal }}</td><td>{{ e.styrende }}</td>
+      <td class="num">{{ bar(e.util) }}</td><td>{{ status(e.status) }}</td></tr>
+  {% endfor %}
+</table>
+
+{% for e in elementer %}
+<h2 class="element">{{ e.navn }} – {{ e.profil }} {{ e.staal }}</h2>
+{% if e.beskrivelse %}<p>{{ e.beskrivelse }}</p>{% endif %}
+<table class="list">
+  <tr><th>Eftervisning</th><th>Afsnit</th><th class="num">Udnyttelse</th><th>Status</th></tr>
+  {% for r in e.checks %}<tr><td>{{ r.title }}</td><td class="small">{{ r.clause }}</td><td class="num">{{ bar(r.util) }}</td><td>{{ status(r.status) }}</td></tr>{% endfor %}
+</table>
+
+<h3><span>Grundlag</span></h3>
+{{ steps(e.basis) }}
+
+{% for r in e.checks %}
+<h3><span>{{ loop.index }}. {{ r.title }}</span><span class="clause">{{ r.clause }}</span></h3>
+{{ steps(r.steps) }}
+<div class="result">{% if r.util is not none %}Udnyttelse {{ fmt(r.util*100, 3) }} % ({{ r.governing }}) – {% elif r.governing %}{{ r.governing }} – {% endif %}{{ status(r.status) }}</div>
+{% endfor %}
+{% endfor %}
+
+<p class="small" style="margin-top: 24pt">Rapporten er genereret automatisk med beregn {{ version }} den {{ dato }}. Formler, indsatte værdier og resultater er udskrevet direkte fra beregningen.</p>
+</div>
+</body>
+</html>

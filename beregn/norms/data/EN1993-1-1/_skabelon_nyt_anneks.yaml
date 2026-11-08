@@ -1,0 +1,19 @@
+# Skabelon for et nyt nationalt anneks (f.eks. SE.yaml, NO.yaml, DE.yaml).
+# Kopiér filen, giv den landekoden som navn, og overskriv kun de parametre,
+# der afviger fra de anbefalede værdier. Alle nøgler fra anbefalet.yaml kan bruges.
+arver: anbefalet
+navn: "XX/EN 1993-1-1 med XX NA"
+standard: "XX/EN 1993-1-1 + NA"
+status: "UDKAST – skal verificeres"
+
+parametre:
+  gamma_M0:
+    vaerdi: 1.00
+    beskrivelse: "Partialkoefficient, tværsnitsbæreevne"
+    kilde: "XX NA, 6.1(1)"
+  # Parametre kan også afhænge af et valg eller være et udtryk:
+  # gamma_M1:
+  #   udtryk: "1.0 * gamma_d"
+  # gamma_d:
+  #   afhaenger_af: sikkerhedsklasse
+  #   vaerdier: {SK1: 0.83, SK2: 0.91, SK3: 1.0}

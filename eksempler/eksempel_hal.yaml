@@ -1,0 +1,57 @@
+# Eksempel: tagbjælker og søjler i en mindre stålhal.
+projekt:
+  navn: "Lagerhal, Industrivej 12"
+  emne: "Eftervisning af primære stålelementer"
+  sagsnr: "24-117"
+  udfoert_af: "SIS"
+  kontrolleret_af: ""
+  revision: "A"
+  konsekvensklasse: "CC2"
+
+norm:
+  standard: EN1993-1-1
+  nationalt_anneks: DK        # skift til 'anbefalet' for EN-anbefalede værdier
+  kontrolklasse: normal       # skaerpet | normal | lempet
+
+elementer:
+  - navn: "B1 Tagbjælke akse B"
+    beskrivelse: "Simpelt understøttet tagbjælke. Kipafstivet af åse for hver 2,0 m i overflangen."
+    profil: IPE 360
+    staal: S355
+    laengde: 8,0 m
+    snitkraefter:
+      M_Ed: 165 kNm
+      V_Ed: 82 kN
+    kipning:
+      laengde: 2,0 m
+      momentform: jaevn
+      lastplacering: overflange
+    eftervisninger: [boejning, forskydning, kombineret, kipning]
+
+  - navn: "B2 Kranbanebjælke"
+    beskrivelse: "Simpelt understøttet, uden mellemliggende kipafstivning."
+    profil: HEA 300
+    staal: S355
+    laengde: 6,0 m
+    snitkraefter:
+      M_Ed: 210 kNm
+      V_Ed: 155 kN
+    kipning:
+      momentform: punkt_midt
+      lastplacering: overflange
+
+  - navn: "S1 Søjle akse B2"
+    beskrivelse: "Pendulsøjle med moment fra excentrisk bjælkeindløb. Afstivet om svag akse midt på."
+    profil: HEB 200
+    staal: S355
+    laengde: 5,5 m
+    knaeklaengde_y: 5,5 m
+    knaeklaengde_z: 2,75 m
+    snitkraefter:
+      N_Ed: 780 kN
+      V_Ed: 6 kN
+      M_Ed: 18 kNm
+    kipning:
+      momentform: lineaer
+      psi: 0
+      lastplacering: forskydningscenter
