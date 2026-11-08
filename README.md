@@ -31,6 +31,7 @@ Fortegn: N<sub>Ed</sub> > 0 er tryk.
 | `kombineret` | M + N + V i tværsnit (plastisk for klasse 1–2, elastisk for klasse 3) | 6.2.8–6.2.10 |
 | `soejlefladning` | Bøjningsudknækning om y og z, valsede I/H-profiler | 6.3.1 |
 | `kipning` | Kipning med M<sub>cr</sub> fra 3-faktor-formlen, generel eller valset metode inkl. f-faktor | 6.3.2 |
+| `interaktion` | Bjælke-søjle, bøjning om y og tryk, formel (6.61)/(6.62) med k-faktorer efter bilag B | 6.3.3 |
 
 Profilbibliotek: IPE 80–600, HEA 100–600, HEB 100–600 (`beregn/sections/data/valsede_I.csv`).
 Tværsnitskonstanterne beregnes ud fra geometrien og afviger under ca. 1 % fra producenttabellerne (testet).
@@ -40,8 +41,9 @@ Tværsnitskonstanterne beregnes ud fra geometrien og afviger under ca. 1 % fra p
 * **DK NA-værdierne skal verificeres** mod den gældende udgave, før værktøjet bruges i projekter.
   Rapporten viser et advarselsfelt, så længe `status` i `DK.yaml` indeholder "UDKAST".
 * Kun moment om stærk akse. Biaksial bøjning er ikke med.
-* **Stabilitetsinteraktion for bjælke-søjler (6.3.3) er ikke med endnu.** Elementer med både tryk og moment
-  markeres "Mangler 6.3.3" i oversigten.
+* Bjælke-søjle-interaktion (6.3.3) bruger bilag B. Elementet regnes som vridningsblødt (tabel B.2), medmindre
+  `kipning: {fastholdt: true}` er angivet (tabel B.1, χ<sub>LT</sub> = 1). C<sub>my</sub> og C<sub>mLT</sub> udledes af
+  momentformen efter tabel B.3 og kan overskrives med `C_my`/`C_mLT`.
 * Klasse 4-tværsnit og forskydningsbuling (EN 1993-1-5) er markeret "Ikke understøttet".
 * Snitkræfterne er input; lastkombinationer efter EN 1990 laves ikke af værktøjet.
 
@@ -90,7 +92,7 @@ mod en uafhængig håndregning.
 
 ## Næste skridt (forslag)
 
-1. Bjælke-søjle-interaktion 6.3.3 (bilag A eller B) og bøjning om svag akse.
+1. Bøjning om svag akse og biaksial interaktion (inkl. bilag A som alternativ).
 2. Flere lastkombinationer pr. element med automatisk styrende kombination.
 3. Import direkte fra FEM-programmet (snitkræfter pr. element).
 4. Flere profiltyper (RHS/SHS/CHS, UPE) og samlinger (EN 1993-1-8).

@@ -57,9 +57,9 @@ class Soejlefladning(Check):
                  "EN 1993-1-1, (6.47)")
             utils[ax] = c.util(f"eta_N_{ax}", f"N_Ed / N_b_{ax}_Rd", ref="EN 1993-1-1, (6.46)")
             ctx.results[f"chi_{ax}"] = c.value(f"chi_{ax}")
-        if m.M_Ed != 0:
+        if m.M_Ed != 0 and "interaktion" not in ctx.results.get("planlagt", []):
             c.warn("<b>Bemærk:</b> Elementet har både tryk og moment. Stabilitetsinteraktion efter "
-                   "6.3.3 (formel 6.61/6.62) skal også eftervises og er ikke med i denne version.",
+                   "6.3.3 (formel 6.61/6.62) skal også eftervises. Tilføj eftervisningen 'interaktion'.",
                    ref="EN 1993-1-1, 6.3.3")
             ctx.results.setdefault("mangler", []).append("6.3.3")
         ax = max(utils, key=utils.get)

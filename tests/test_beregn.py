@@ -123,3 +123,52 @@ def test_report_renders():
     p = load_project("eksempler/eksempel_hal.yaml")
     html = render_html(p, run_project(p))
     assert "Kipning" in html and "<sub>b,Rd</sub>" in html
+
+
+def test_interaction_annex_b_hand_calc():
+    s = sections.get("HEB 200")
+    N, M, L = 780e3, 18e6, 5500
+    m = Member("S", s, "S355", L, N_Ed=N, M_Ed=M, L_cr_y=5500, L_cr_z=2750,
+               ltb=LTBInput(momentform="lineaer", psi=0.0, lastplacering="forskydningscenter"))
+    res = _run(m)
+    E, G, fy, g1 = 210000, 81000, 355, 1.20
+    NRk, MRk = s.A * fy, s.W_pl_y * fy
+    lam_y = math.sqrt(NRk / (math.pi ** 2 * E * s.I_y / 5500 ** 2))
+    lam_z = math.sqrt(NRk / (math.pi ** 2 * E * s.I_z / 2750 ** 2))
+    chi_y, chi_z = _chi(lam_y, 0.34), _chi(lam_z, 0.49)        # h/b = 1,0: kurve b / c
+    C1 = 1.88
+    Mcr = C1 * math.pi ** 2 * E * s.I_z / L ** 2 * math.sqrt(s.I_w / s.I_z + L ** 2 * G * s.I_t / (math.pi ** 2 * E * s.I_z))
+    lam = math.sqrt(MRk / Mcr)
+    phi = 0.5 * (1 + 0.34 * (lam - 0.4) + 0.75 * lam ** 2)        # h/b <= 2: kurve b
+    chi = min(1, 1 / (phi + math.sqrt(phi ** 2 - 0.75 * lam ** 2)), 1 / lam ** 2)
+    kc = 1 / 1.33
+    f = min(1, 1 - 0.5 * (1 - kc) * (1 - 2 * (lam - 0.8) ** 2))
+    chi_lt = min(1, chi / f, 1 / lam ** 2) if lam > 0.4 else 1.0
+    Cm = 0.6
+    ny, nz = N / (chi_y * NRk / g1), N / (chi_z * NRk / g1)
+    kyy = min(Cm * (1 + (lam_y - 0.2) * ny), Cm * (1 + 0.8 * ny))
+    kzy = (min(0.6 + lam_z, 1 - 0.1 * lam_z * nz / (Cm - 0.25)) if lam_z < 0.4
+           else max(1 - 0.1 * lam_z * nz / (Cm - 0.25), 1 - 0.1 * nz / (Cm - 0.25)))
+    mb = chi_lt * MRk / g1
+    expected = max(ny + kyy * M / mb, nz + kzy * M / mb)
+    r = res["interaktion"]
+    assert r.utilisation == pytest.approx(expected, rel=1e-6)
+    assert "soejlefladning" in res and r.status == "OK"
+
+
+def test_interaction_restrained_uses_table_b1():
+    s = sections.get("HEB 200")
+    m = Member("S", s, "S355", 4000, N_Ed=600e3, M_Ed=40e6,
+               ltb=LTBInput(momentform="konstant", fastholdt=True), checks=["interaktion"])
+    res = _run(m)
+    assert res["kipning"].status == "Ikke relevant"
+    ns = res["interaktion"].calc.ns
+    assert ns["k_zy"].value == pytest.approx(0.6 * ns["k_yy"].value)
+    assert ns["chi_LT_mod"].value == 1.0
+
+
+def test_no_missing_flag_when_interaction_runs():
+    s = sections.get("HEB 200")
+    m = Member("S", s, "S355", 4000, N_Ed=600e3, M_Ed=20e6)
+    mr = run_member(m, load_norm(annex="DK"), FMT)
+    assert mr.missing == []

@@ -28,6 +28,12 @@ class Kipning(Check):
         if m.M_Ed == 0:
             c.note("Intet moment om stærk akse; kipning er ikke relevant.")
             return self.result(c, None, NA)
+        if lt.fastholdt:
+            c.note("Bjælken er angivet som fuldt fastholdt mod kipning; χ<sub>LT</sub> = 1.",
+                   ref="EN 1993-1-1, 6.3.2.1")
+            c.given("chi_LT_mod", 1.0, desc="Reduktionsfaktor for kipning", show=False)
+            ctx.results["chi_LT"] = 1.0
+            return self.result(c, None, NA)
         kl = ctx.results["klasse"]
         if kl == 4:
             return self.result(c, None, UNSUPPORTED)
