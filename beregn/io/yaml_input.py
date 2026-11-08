@@ -26,6 +26,7 @@ def member_from_dict(d: dict) -> Member:
         lastplacering=k.get("lastplacering", "overflange"),
         k=float(k.get("k", 1.0)), k_w=float(k.get("k_w", 1.0)),
         C1=k.get("C1"), C2=k.get("C2"), k_c=k.get("k_c"),
+        fastholdt=str(k.get("fastholdt", False)).strip().lower() in ("true", "ja", "1", "x"), C_my=k.get("C_my"), C_mLT=k.get("C_mLT"),
     )
     return Member(
         name=str(d["navn"]),

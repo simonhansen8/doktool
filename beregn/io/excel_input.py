@@ -17,7 +17,8 @@ from .yaml_input import project_from_dict
 _HDR = re.compile(r"^\s*([^\[]+?)\s*(?:\[(.+)\])?\s*$")
 FORCES = ("N_Ed", "V_Ed", "M_Ed")
 KIP = {"kip_laengde": "laengde", "momentform": "momentform", "psi": "psi", "lastplacering": "lastplacering",
-       "C1": "C1", "C2": "C2", "k_c": "k_c"}
+       "C1": "C1", "C2": "C2", "k_c": "k_c",
+       "fastholdt": "fastholdt", "C_my": "C_my", "C_mLT": "C_mLT"}
 NORM_KEYS = ("standard", "nationalt_anneks", "kontrolklasse")
 
 

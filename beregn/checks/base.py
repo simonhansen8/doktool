@@ -39,6 +39,9 @@ class LTBInput:
     C1: float | None = None
     C2: float | None = None
     k_c: float | None = None
+    fastholdt: bool = False             # fuldt fastholdt mod kipning/vridning
+    C_my: float | None = None           # ækvivalent momentfaktor, bilag B tabel B.3
+    C_mLT: float | None = None
 
 
 @dataclass

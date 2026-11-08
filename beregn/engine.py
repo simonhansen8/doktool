@@ -8,7 +8,8 @@ from .core.calc import Calc
 from .core.units import NumberFormat
 from .norms import Norm
 
-DEFAULT_CHECKS = ["klassifikation", "boejning", "forskydning", "kombineret", "soejlefladning", "kipning"]
+DEFAULT_CHECKS = ["klassifikation", "boejning", "forskydning", "kombineret", "soejlefladning", "kipning",
+                  "interaktion"]
 
 
 @dataclass
@@ -60,7 +61,9 @@ def _order(keys: list[str]) -> list[str]:
 def run_member(member: Member, norm: Norm, fmt: NumberFormat) -> MemberResult:
     ctx, basis = prepare(member, norm, fmt)
     mr = MemberResult(member, basis)
-    for key in _order(member.checks or DEFAULT_CHECKS):
+    order = _order(member.checks or DEFAULT_CHECKS)
+    ctx.results["planlagt"] = order
+    for key in order:
         mr.results.append(REGISTRY[key]().run(ctx))
     mr.missing = ctx.results.get("mangler", [])
     return mr
